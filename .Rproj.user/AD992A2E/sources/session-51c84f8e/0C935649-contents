@@ -1,0 +1,163 @@
+library(shiny)
+library(bslib)
+library(readxl)
+library(dplyr)
+library(jpeg)
+library(grid)
+library(gridExtra)
+library(ggtern)
+library(shinyjs)
+
+#Set working directory to correct folder
+setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
+
+#Get Data
+textiles_data <- read_excel("MaterialDataset01302024.xlsx")
+names_cleaned <- textiles_data %>% 
+  filter(textile_name != "NA")
+
+textiles_cleaned <- textiles_data %>% 
+  filter(image_filename_app != "NA")
+
+
+#Define UI
+ui <- fluidPage( 
+  useShinyjs(),
+  
+  titlePanel(title = "Materials Sample Search"), 
+  
+  #All inputs will be here
+  sidebarPanel(
+    h3("The Material Record"), 
+    selectInput("textile_name", "Search by textile name", 
+                choices = c("All Names", textiles_cleaned$textile_name)), 
+    textOutput("name_out")
+  ), 
+  
+  mainPanel(
+    uiOutput("images")
+  ), 
+  tags$head(
+    tags$script(HTML('
+    
+      Shiny.addCustomMessageHandler("update_images", function(message) { 
+        update_images(message.image_urls);  
+      });
+    
+       function update_images(image_urls) { 
+       
+         if (!Array.isArray(image_urls)) { 
+          console.error("image_urls is not an array");
+          return;
+         }
+       
+         $("#image_gallery").empty();
+         
+         //const image_arr = Array.from(image_urls)
+         
+         image_urls.forEach(function(url) { 
+           
+           var img = $("<img>").attr("src", url).addClass("gallery-image");
+           $("#image_gallery").append(img);
+          });
+          Shiny.setInputValue("image_urls", image_urls)
+       }
+    '))
+  )
+  
+)
+
+#Define Server Logic
+server <- function(input, output, session) { 
+  
+  
+  #Reactive function that updates upon every change in name
+  selected_name <- reactive({ 
+    if (input$textile_name != "All Names") {
+      filtered_textiles <- textiles_cleaned %>% filter(textile_name == input$textile_name)
+      image_urls <- filtered_textiles$image_filename_app
+      
+      #Make sure the urls are in list form
+      if(!is.null(image_urls) && !is.list(image_urls)) { 
+        image_urls <- list(image_urls)
+      } 
+      
+      return(list(data = filtered_textiles, images = image_urls))
+    }
+    else {
+      return(list(data = textiles_cleaned, images = textiles_cleaned$image_filename_app))
+    }
+  })
+
+
+  output$name_out <- renderText({
+    selected_name()$textile_name %>% 
+      unique()
+  })
+      
+  #Javascript attempt
+  observeEvent(input$textile_name, { 
+    image_urls <- selected_name()$images
+    
+    
+    if (is.null(image_urls)) { 
+      image_urls <- list()
+    }
+    #print(image_urls)
+    session$sendCustomMessage(type = "update_images", 
+                              message = list(image_urls = image_urls))
+    })
+  
+  # observeEvent(input$image_urls, {
+  #   print(input$image_urls)
+  # })
+  
+  
+  output$images <- renderUI({ 
+    tags$div(id = "image_gallery", class = "image-gallery")
+    })
+}
+
+#Run the app
+shinyApp(ui = ui, server = server)
+
+#Set number of rows and columns
+# ncols <- 4
+# nrows <- 20
+# 
+# #Make spacing
+# spacing <- unit(0.1, "inches")
+# 
+# widths <- unit(rep(c(1, spacing), ncols), c("null", "inches"))
+# widths <- widths[1:(2 * ncols - 1)]
+
+#   output$image_selection <- renderPlot({
+#     
+#     #Get file path of image we want to render
+#     #Code from Nicholas Sliter's Repo/Stack overflow: #https://stackoverflow
+#     #.com/questions/53386688/how-to-display-multiple-pictures-png-that-are-stored-locally-on-shiny 
+#     
+#     photo_name <- selected_name()$image_filename_app
+#     filename <- paste0("app_images/", photo_name, sep = "")
+#     
+#     #Check that the photo(s) exists in folder then convert to grobs
+#     filename <- filename[file.exists(filename)]
+#     jpegs = lapply(filename, readJPEG)
+#     
+#     #rasterGrob displays images as array of pixel values over plot
+#     asGrobs = lapply(jpegs, rasterGrob)
+#     
+#     
+#     p <- grid.arrange(grobs = asGrobs, 
+#                       nrow = 20,
+#                       ncol = 4)
+#     
+#   },
+#   width = 900, 
+#   height = 5000, 
+#   res = 40)
+# }
+
+# tabsetPanel(tabPanel(title = "Images", 
+#                      plotOutput(outputId = "image_selection", 
+#                                 click = "plot_click")))

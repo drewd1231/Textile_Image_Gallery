@@ -1,0 +1,68 @@
+library(shiny)
+library(bslib)
+library(readxl)
+library(dplyr)
+
+#Set working directory to correct folder
+setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
+
+#Get Data
+textiles_data <- read_excel("MaterialDataset01302024.xlsx")
+names_cleaned <- textiles_data %>% 
+  filter(textile_name != "NA")
+
+
+#Define UI
+ui <- fluidPage( 
+  titlePanel(title = "Materials Sample Search"), 
+  
+  #All inputs will be here
+  sidebarPanel(
+    h3("The Material Record"), 
+    selectInput("textile_name", "Search by textile name", 
+                choices = c("All Names", names_cleaned$textile_name)), 
+    textOutput("name_out")
+  ), 
+  
+  mainPanel(
+    imageOutput("image", 
+                width = 400, 
+                height = 400)
+  )
+  
+)
+
+#Define Server Logic
+server <- function(input, output, session) { 
+  
+  selected_name <- reactive({ 
+    textiles_data %>% filter(textile_name == input$textile_name)
+    })
+
+  output$name_out <- renderText({
+    selected_name()$textile_name
+  })
+  
+  #Show image
+    # if (names_cleaned$textile_name == curr_name()) {
+      
+      #Maybe use req() in the reactive function somewhere??
+
+      output$image <- renderImage({
+        #Get file path of image we want to render
+        #FIX THIS
+        photo_name <- selected_name()$image_filename_app
+        filename <- file.path("app_images", photo_name)
+        print(getwd())
+        
+        list(src = filename,
+             contentType = "images/.jpeg",
+             width = 400, 
+             height = 400)
+        
+      }, deleteFile = FALSE)
+}
+  
+
+#Run the app
+shinyApp(ui = ui, server = server)
