@@ -145,20 +145,13 @@ ui <- fluidPage(
            $("#image_gallery").append(img);
         });
        }
+       
+      $(document).on("click", ".zoomed_image", function() { 
+        var path_name = $(this).data("path");
+        Shiny.setInputValue("zoomed_image", path_name)
+      })
     ')
-  ), 
-  
-  # shiny::modalDialog(
-  #   id = "image_modal", 
-  #   title = "Textile Description", 
-  #   easyClose = TRUE, 
-  #   footer = NULL, 
-  #   size = "l",
-  #   div(
-  #     img(src = "", id = "modal_image", style = "width: 100%;"), 
-  #     verbatimTextOutput("textile_details")
-  #   ))
-  
+  ) 
 )
 
 #Define Server Logic
@@ -329,9 +322,45 @@ server <- function(input, output, session) {
     
     showModal(modalDialog( 
       title = "Textile Description", 
-      img(src = selected_url, style = "width: 100%;"),
-      size = "m",
-      uiOutput("textile_details")
+      
+      #Creates custom layout of modaldialog
+      tags$div(
+        #Aligns details and image around center, puts gap in between 
+        style = "display: flex; align-items: center; gap: 10px",
+        
+        #Displays the details of each textile clicked on
+        tags$div(
+          uiOutput("textile_details")
+        ),
+        
+        #Display image within modal of fixed width (auto height to retain aspect-ratio)
+        tags$img(
+          src = selected_url, 
+          style = "margin-right: 10px; height: 300px; width: auto;", 
+          class = "zoomed_image", 
+          'data-path' = selected_url
+        )
+      ), 
+      size = "l", 
+      easyClose = TRUE
+    ))
+  })
+  
+  #Display zoomed version of image previously clicked
+  observeEvent(input$zoomed_image, { 
+
+    selected_url <- input$zoomed_image
+    
+    #Retrieve information of image clicked on by user
+    selected_info <- textiles_cleaned %>% 
+      filter(image_filename_app == selected_url)
+    
+    showModal(modalDialog( 
+      tags$img(
+        src = selected_url, 
+        style = "max-width: 100%; height: auto;"
+      ),
+      size = "l"
     ))
   })
 }
@@ -340,258 +369,3 @@ server <- function(input, output, session) {
 #Run the app
 shinyApp(ui = ui, server = server)
 
-#Set number of rows and columns
-# ncols <- 4
-# nrows <- 20
-# 
-# #Make spacing
-# spacing <- unit(0.1, "inches")
-# 
-# widths <- unit(rep(c(1, spacing), ncols), c("null", "inches"))
-# widths <- widths[1:(2 * ncols - 1)]
-
-#   output$image_selection <- renderPlot({
-#     
-#     #Get file path of image we want to render
-#     #Code from Nicholas Sliter's Repo/Stack overflow: #https://stackoverflow
-#     #.com/questions/53386688/how-to-display-multiple-pictures-png-that-are-stored-locally-on-shiny 
-#     
-#     photo_name <- selected_name()$image_filename_app
-#     filename <- paste0("app_images/", photo_name, sep = "")
-#     
-#     #Check that the photo(s) exists in folder then convert to grobs
-#     filename <- filename[file.exists(filename)]
-#     jpegs = lapply(filename, readJPEG)
-#     
-#     #rasterGrob displays images as array of pixel values over plot
-#     asGrobs = lapply(jpegs, rasterGrob)
-#     
-#     
-#     p <- grid.arrange(grobs = asGrobs, 
-#                       nrow = 20,
-#                       ncol = 4)
-#     
-#   },
-#   width = 900, 
-#   height = 5000, 
-#   res = 40)
-# }
-
-# tabsetPanel(tabPanel(title = "Images", 
-#                      plotOutput(outputId = "image_selection", 
-#                                 click = "plot_click")))
-
-
-
-# #Reactive function that updates upon every change in name
-# selected_name <- reactive({ 
-#   if (input$textile_name != "All Names") {
-#     filtered_textiles <- textiles_cleaned %>% 
-#       filter(textile_name == input$textile_name)
-#     
-#     #Ensures that the image paths are passed as list to js
-#     image_urls <- as.list(filtered_textiles$image_filename_app)
-#     
-#   }
-#   else {
-#     filtered_textiles <- textiles_cleaned
-#     
-#     #Ensures that the image paths are passed as list to js
-#     image_urls <- as.list(filtered_textiles$image_filename_app)
-#   }
-#   #Returns ds that contains the now filtered (or unfiltered for "All Textiles") data and list of image filepaths
-#   list(data = filtered_textiles, images = image_urls)
-# })
-# 
-# #Reactive function that updates upon every change in color choice
-# selected_color <- reactive({ 
-#   if (input$color_choice != "All Colors") { 
-#     
-#     #Checks to see what the radio button is set to
-#     # if (input$and_or == "AND") { 
-#       #Use already filtered data to now filter by color
-#     filtered_colors <- selected_name()$data %>% 
-#       filter(grepl(input$color_choice, textile_color_visual))
-#     # }
-#     # else { 
-#     #   #Filter by color choice then combine ds with name choice ds
-#     #   filtered_colors <- textiles_cleaned %>% 
-#     #     filter(grepl(input$color_choice, textile_color_visual)) %>% 
-#     #       rbind(selected_name()$data) %>% 
-#     #         unique()
-#     # }
-#     # 
-#     image_urls <- as.list(filtered_colors$image_filename_app)
-#   }
-#   
-#   else { 
-#     #No color has been chosen, return data from names selection
-#     filtered_colors <- selected_name()$data
-#     
-#     image_urls <- as.list(filtered_colors$image_filename_app)
-#   }
-#   list(data = filtered_colors, images = image_urls)
-# })
-# 
-# #Reactive function that updates upon every change in pattern choice
-# selected_pattern <- reactive ({ 
-#   if (input$pattern_choice != "All Patterns") { 
-#     
-#     #Checks to see what the radio button is set to
-#     if (input$and_or == "AND") { 
-#       #Use already filtered data to now filter by pattern
-#       filtered_patterns <- selected_color()$data %>% 
-#         filter(grepl(input$pattern_choice, textile_pattern_visual)) 
-#     }
-#     
-#     else { 
-#       #Filter by pattern choice then combine ds with name choice ds
-#       filtered_patterns <- selected_name()$data %>% 
-#         filter(grepl(input$pattern_choice, textile_pattern_visual)) %>% 
-#           rbind(selected_color()$data) %>% 
-#             unique()
-#     }
-#     
-#     image_urls <- as.list(filtered_patterns$image_filename_app)
-#   }
-#   
-#   else { 
-#     #No pattern has been chosen, return data from names selection
-#     filtered_patterns <- selected_color()$data
-#     
-#     image_urls <- as.list(filtered_patterns$image_filename_app)
-#   }
-#   list(data = filtered_patterns, images = image_urls)
-# })
-# 
-# #Reactive function that updates upon every change in process choice
-# selected_process <- reactive ({ 
-#   if (input$process_choice != "All Processes") { 
-#     
-#     #Checks to see what the radio button is set to
-#     if (input$and_or == "AND") { 
-#       #Use already filtered data to now filter by process
-#       filtered_processes <- selected_pattern()$data %>% 
-#         filter(grepl(input$process_choice, textile_process_visual))  #MAY BE ISSUE WITH USING GREPL HERE : if dyed is not subset of piece-dyed
-#     }
-#     
-#     else { 
-#       #Filter by pattern choice then combine ds with name choice ds
-#       filtered_processes <- selected_name()$data %>% 
-#         filter(grepl(input$process_choice, textile_process_visual)) %>% 
-#           rbind(selected_pattern()$data) %>% 
-#             unique()
-#     }
-#     
-#     image_urls <- as.list(filtered_processes$image_filename_app)
-#   }
-#   
-#   else { 
-#     #No pattern has been chosen, return data from names selection
-#     filtered_processes <- selected_pattern()$data
-#     
-#     image_urls <- as.list(filtered_processes$image_filename_app)
-#   }
-#   list(data = filtered_processes, images = image_urls)
-# })
-# 
-# #Reactive function that updates upon every change in weave choice
-# selected_weave <- reactive ({ 
-#   if (input$weave_choice != "All Weaves") { 
-#     
-#     #Checks to see what the radio button is set to
-#     if (input$and_or == "AND") { 
-#       #Use already filtered data to now filter by process
-#       filtered_weaves <- selected_process()$data %>% 
-#         filter(grepl(input$weave_choice, textile_weave_visual))
-#     }
-#     
-#     else { 
-#       #Filter by pattern choice then combine ds with name choice ds
-#       filtered_weaves <- selected_name()$data %>% 
-#         filter(grepl(input$weave_choice, textile_weave_visual)) %>% 
-#         rbind(selected_process()$data) %>% 
-#         unique()
-#     }
-#     
-#     image_urls <- as.list(filtered_weaves$image_filename_app)
-#   }
-#   
-#   else { 
-#     #No pattern has been chosen, return data from names selection
-#     filtered_weaves <- selected_process()$data
-#     
-#     image_urls <- as.list(filtered_weaves$image_filename_app)
-#   }
-#   list(data = filtered_weaves, images = image_urls)
-# })
-#     
-# #Reactive function that updates upon every change in fiber choice
-# selected_fiber <- reactive ({ 
-#   if (input$fiber_choice != "All Fibers") { 
-#     
-#     #Checks to see what the radio button is set to
-#     if (input$and_or == "AND") { 
-#       #Use already filtered data to now filter by fiber
-#       filtered_fibers <- selected_weave()$data %>% 
-#         filter(grepl(input$fiber_choice, textile_fiber_visual))
-#     }
-#     
-#     else { 
-#       #Filter by fiber choice then combine ds with name choice ds
-#       filtered_fibers <- selected_name()$data %>% 
-#         filter(grepl(input$fiber_choice, textile_fiber_visual)) %>% 
-#           rbind(selected_weave()$data) %>% 
-#             unique()
-#     }
-#     
-#     image_urls <- as.list(filtered_fibers$image_filename_app)
-#   }
-#   
-#   else { 
-#     #No pattern has been chosen, return data from names selection
-#     filtered_fibers <- selected_weave()$data
-#     
-#     image_urls <- as.list(filtered_fibers$image_filename_app)
-#   }
-#   list(data = filtered_fibers, images = image_urls)
-# })
-
-# #Waits for user to select textile name input then calls reactive function
-# observeEvent(input$textile_name, { 
-#   display_images(selected_fiber()$images)
-# })
-# 
-# #Waits for user to select textile color input then calls reactive function
-# observeEvent(input$color_choice, { 
-#   display_images(selected_fiber()$images)
-# })
-# 
-# #Waits for user to select and_or option then calls reactive function
-# observeEvent(input$and_or, { 
-#   display_images(selected_fiber()$images)
-# })
-# 
-# #Waits for user to select textile pattern input then calls reactive function
-# observeEvent(input$pattern_choice, {
-#   display_images(selected_fiber()$images)
-# })
-# 
-# #Waits for user to select textile process input then calls reactive function
-# observeEvent(input$process_choice, {
-#   display_images(selected_fiber()$images)
-# })
-# 
-# #Waits for user to select textile weave input then calls reactive function
-# observeEvent(input$weave_choice, {
-#   display_images(selected_fiber()$images)
-# })
-# 
-# #Waits for user to select textile fiber input then calls reactive function
-# observeEvent(input$fiber_choice, {
-#   display_images(selected_fiber()$images)
-# })
-
-# observeEvent(input$image_urls, {
-#   print(input$image_urls)
-# })
