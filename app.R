@@ -74,6 +74,15 @@ ui <- fluidPage(
                  choices = c("AND", "OR"), 
                  selected = "AND", 
                  justified = TRUE),
+  
+    #Multi-color attempt  
+    # checkboxGroupInput("multi_color", "Search by multiple colors", 
+    #               choices = c("All Colors", color_list)),
+    
+    selectInput("colors_many", "Many colors", 
+                choices = c("All Colors", color_list), 
+                selected = "All Colors", 
+                multiple = TRUE),
     
     #Allows user to select color to filter by
     selectInput("color_choice", "Search by color(s)", 
@@ -166,8 +175,11 @@ server <- function(input, output, session) {
                               message = list(image_urls = image_urls))
   }
   
+  rv <- reactiveValues(filter_colors = FALSE, filtered_color_input = list())
+  
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
+    #print(filter_colors)
     curr_filtered <- textiles_cleaned
     
     #Filters data based on name
@@ -180,6 +192,19 @@ server <- function(input, output, session) {
     if (input$color_choice != "All Colors") { 
       curr_filtered <- curr_filtered %>% 
         filter(grepl(input$color_choice, textile_color_visual))
+    }
+    
+    #Check if there are colors to be filtered by
+    if (rv$filter_colors == TRUE) {
+      
+      #Loop through each color selected and filter data by each of them
+      for (color in rv$filtered_color_input) {
+        if (color == "All Colors") { 
+          next
+        }
+        curr_filtered <- curr_filtered %>%
+          filter(grepl(color, textile_color_visual))
+      }
     }
     
     #Filters data based on pattern
@@ -230,6 +255,21 @@ server <- function(input, output, session) {
             unique()
     }
     
+    #Check if there are colors to be filtered by
+    if (rv$filter_colors == TRUE) {
+      
+      #Loop through colors in input list and filter the data by each one
+      for (color in rv$filtered_color_input) {
+        if (color == "All Colors") { 
+          next
+        }
+        curr_filtered <- curr_filtered %>%
+          filter(grepl(color, textile_color_visual)) %>% 
+            rbind(curr_filtered) %>% 
+              unique()
+      }
+    }
+    
     #Filter data based on name and pattern then combine with previously filtered data
     if (input$pattern_choice != "All Patterns") { 
       curr_filtered <- name_filtered %>% 
@@ -276,6 +316,31 @@ server <- function(input, output, session) {
 
   #Wait for any inputs to occur  
   observe({ 
+    
+    rv$filtered_color_input <- as.list(input$colors_many)
+    # if (filtered_color_input[[0]] != "All Colors") { 
+
+      if (length(rv$filtered_color_input) == 0) { 
+        rv$filter_colors = FALSE
+      }
+      
+      else if (length(rv$filtered_color_input) == 1) { 
+        if (rv$filtered_color_input == "All Colors") { 
+          rv$filter_colors = FALSE
+        }
+        else { 
+          rv$filter_colors = TRUE
+        }
+      }
+      
+      else { 
+        #rv$filtered_color_input[rv$filtered_color_input != "All Colors"]
+
+        rv$filter_colors = TRUE
+      }
+    
+    
+    
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
       filtered_data <- filtered_and()
