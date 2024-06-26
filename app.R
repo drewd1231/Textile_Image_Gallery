@@ -51,7 +51,10 @@ weave_list <- c("satin", "plainweave", "twill", "damask", "velvet", "complex wea
   sort()
 
 #Hardcoded list of fiber options
-fiber_list <- c("silk", "cotton", "wool", "linen")
+fiber_list <- c("silk", "cotton", "wool", "linen") %>% 
+  sort()
+
+glossary_textiles_list <- c("chintz-kalamkari", "dongris", "gingham", "guinea cloth", "muslin", "nickanees", "perpetuanen", "platillas", "sail cloth", "slaaplakens")
 
 #Define UI
 ui <- fluidPage( 
@@ -65,28 +68,20 @@ ui <- fluidPage(
   sidebarPanel(
     h3("The Material Record"), 
     
+    #Allows user to select textile name to filter by
     selectInput("textile_name", "Search by textile name", 
                 choices = c("All Names", names_cleaned$textile_name), 
                 selected = "All Names"), 
     
     #Allows user to filter images by name AND other modifiers or not
-    radioGroupButtons("and_or", "Select Modifiers",
+    radioGroupButtons("and_or", "Select Modifier Operator",
                  choices = c("AND", "OR"), 
                  selected = "AND", 
                  justified = TRUE),
   
-    #Multi-color attempt  
-    # checkboxGroupInput("multi_color", "Search by multiple colors", 
-    #               choices = c("All Colors", color_list)),
-    
-    selectInput("colors_many", "Many colors", 
-                choices = c("All Colors", color_list), 
-                selected = "All Colors", 
-                multiple = TRUE),
-    
-    #Allows user to select color to filter by
     selectInput("color_choice", "Search by color(s)", 
-                choices = c("All Colors", color_list)),
+                choices = color_list, 
+                multiple = TRUE),
     
     #Allows user to select pattern to filter by
     selectInput("pattern_choice", "Search by pattern", 
@@ -122,6 +117,19 @@ ui <- fluidPage(
         width: 100%;
         height: 250px;
         object-fit: cover; 
+        //transition: transform 0.2sec;
+      }
+      .rotated { 
+        transform: rotate(90deg);
+      }
+      
+      #custom-modal .modal-dialog { 
+      height: 1000px !important;
+      max-width: none !important;
+      }
+      
+      #custom-modal .modal-content { 
+      height: 80vh;
       }
     "))
   ),
@@ -150,13 +158,22 @@ ui <- fluidPage(
            var img = $("<img>").attr("src", url).addClass("gallery-image").click(function() { 
               Shiny.setInputValue("selected_image", url, {priority: "event"});
            });
+           
+           img.on("load", function() { 
+            if (this.naturalHeight > this.naturalWidth) { 
+              $(this).css("transform", "rotated");
+            }
+           });
+           
            //Appends each image object to the "image_gallery"
            $("#image_gallery").append(img);
         });
        }
        
+      //Check for clicks on image when first modal dialog pop-up
       $(document).on("click", ".zoomed_image", function() { 
         var path_name = $(this).data("path");
+        //Tell shiny that image has been clicked on and we should now zoom in
         Shiny.setInputValue("zoomed_image", path_name)
       })
     ')
@@ -175,6 +192,7 @@ server <- function(input, output, session) {
                               message = list(image_urls = image_urls))
   }
   
+  #initialize reactive values that will be passed from observe block to reactive block
   rv <- reactiveValues(filter_colors = FALSE, filtered_color_input = list())
   
   #Reactive function we want to call when user selects "AND"
@@ -187,21 +205,12 @@ server <- function(input, output, session) {
       curr_filtered <- curr_filtered %>% 
         filter(textile_name == input$textile_name)
     }
-    
-    #Filters data based on color
-    if (input$color_choice != "All Colors") { 
-      curr_filtered <- curr_filtered %>% 
-        filter(grepl(input$color_choice, textile_color_visual))
-    }
-    
+
     #Check if there are colors to be filtered by
     if (rv$filter_colors == TRUE) {
       
       #Loop through each color selected and filter data by each of them
       for (color in rv$filtered_color_input) {
-        if (color == "All Colors") { 
-          next
-        }
         curr_filtered <- curr_filtered %>%
           filter(grepl(color, textile_color_visual))
       }
@@ -247,22 +256,11 @@ server <- function(input, output, session) {
 
     curr_filtered <- name_filtered
     
-    #Filter data based on name and color then combine with previously filtered data
-    if (input$color_choice != "All Colors") { 
-      curr_filtered <- name_filtered %>% 
-        filter(grepl(input$color_choice, textile_color_visual)) %>% 
-          rbind(curr_filtered) %>% 
-            unique()
-    }
-    
     #Check if there are colors to be filtered by
     if (rv$filter_colors == TRUE) {
       
       #Loop through colors in input list and filter the data by each one
       for (color in rv$filtered_color_input) {
-        if (color == "All Colors") { 
-          next
-        }
         curr_filtered <- curr_filtered %>%
           filter(grepl(color, textile_color_visual)) %>% 
             rbind(curr_filtered) %>% 
@@ -317,30 +315,17 @@ server <- function(input, output, session) {
   #Wait for any inputs to occur  
   observe({ 
     
-    rv$filtered_color_input <- as.list(input$colors_many)
-    # if (filtered_color_input[[0]] != "All Colors") { 
+    #Convert vector of color inputs to list
+    rv$filtered_color_input <- as.list(input$color_choice)
+    
+    #Check if there are any colors selected
+    if (length(rv$filtered_color_input) == 0) { 
+      rv$filter_colors = FALSE
+    }
+    else { 
+      rv$filter_colors = TRUE
+    }
 
-      if (length(rv$filtered_color_input) == 0) { 
-        rv$filter_colors = FALSE
-      }
-      
-      else if (length(rv$filtered_color_input) == 1) { 
-        if (rv$filtered_color_input == "All Colors") { 
-          rv$filter_colors = FALSE
-        }
-        else { 
-          rv$filter_colors = TRUE
-        }
-      }
-      
-      else { 
-        #rv$filtered_color_input[rv$filtered_color_input != "All Colors"]
-
-        rv$filter_colors = TRUE
-      }
-    
-    
-    
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
       filtered_data <- filtered_and()
@@ -368,12 +353,37 @@ server <- function(input, output, session) {
     selected_info <- textiles_cleaned %>% 
       filter(image_filename_app == selected_url)
     
+    #Various information about source of the textile in one string
     collection_image_info <- paste(selected_info$collection, selected_info$id_no, selected_info$image_filename_orig, sep = ", ")
     
+    #Split the textiles name up into vector if it has multiple names within it
+    find_name <- strsplit(selected_info$textile_name, split = ", ") %>% 
+      unlist() %>% 
+        strsplit(split = "/") %>% 
+          unlist()
+    
+    #Get first name listed if there are multiple names
+    find_name <- find_name[1]
+    
+    #Check if the name found is within the names in the glossary
+    glossary_page <- grep(find_name[1], glossary_textiles_list)
+    
+    #If name is in glossary, record how it is labeled on the website
+    in_glossary <- glossary_textiles_list[glossary_page[1]]
+    
+    #Put together link if glossary page for textile exists
+    if (!is.na(in_glossary)) { 
+      glossary_url <- paste("https://dutchtextiletrade.org/textiles/", in_glossary, "/", sep = "")
+    }
+    else{ 
+      glossary_url <- "https://dutchtextiletrade.org/textiles/"
+    }
+      
     #Print details of image clicked on
     output$textile_details <- renderUI({ 
       tagList( 
         tags$p(strong("Textile Name: "), selected_info$textile_name), 
+        tags$p(strong("Text from source: "), selected_info$text_source),
         tags$p(strong("Color: "), selected_info$textile_color_visual), 
         tags$p(strong("Fiber: "), selected_info$textile_fiber_visual), 
         tags$p(strong("Pattern: "), selected_info$textile_pattern_visual),
@@ -381,11 +391,18 @@ server <- function(input, output, session) {
         tags$p(strong("Weave: "), selected_info$textile_weave_visual), 
         tags$p(strong("Date: "), selected_info$orig_date), 
         tags$p(strong("Additional Info: "), selected_info$addtl_info), 
-        tags$p(strong("Collection/image file: "), collection_image_info)
+        tags$p(strong("Collection/image file: "), collection_image_info), 
+        tags$p(strong("Search for "), strong(selected_info$textile_name), strong("in: ")),
+        tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
+        tags$p(),
+        tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
+        tags$p(),
+        tags$a(href = glossary_url, strong("Glossary"))
       )
     })
     
     showModal(modalDialog( 
+      id = "custom-modal",
       title = "Textile Description", 
       
       #Creates custom layout of modaldialog
@@ -420,6 +437,7 @@ server <- function(input, output, session) {
     selected_info <- textiles_cleaned %>% 
       filter(image_filename_app == selected_url)
     
+    #Show zoomed image by filling new modalDialog pop-up window
     showModal(modalDialog( 
       tags$img(
         src = selected_url, 
