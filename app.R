@@ -9,6 +9,7 @@ library(ggtern)
 library(shinyjs)
 library(shinythemes)
 library(shinyWidgets)
+library(shinyPagerUI)
 
 #Set working directory to correct folder
 setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
@@ -103,7 +104,10 @@ ui <- fluidPage(
   ), 
   
   mainPanel(
-    uiOutput("images")
+    uiOutput("images"), 
+    actionButton("prev_page", "Previous"),
+    actionButton("next_page", "Next"), 
+    textOutput("page_details")
   ), 
   tags$head(
     #Creates HTML layout for how images are displayed (4 columns, gap in between, etc.)
@@ -193,7 +197,10 @@ server <- function(input, output, session) {
   }
   
   #initialize reactive values that will be passed from observe block to reactive block
-  rv <- reactiveValues(filter_colors = FALSE, filtered_color_input = list())
+  rv <- reactiveValues(filter_colors = FALSE, 
+                       filtered_color_input = list(), 
+                       page_number = 1, 
+                       page_size = 12)
   
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
@@ -306,10 +313,10 @@ server <- function(input, output, session) {
 
   
   #Display images initially before any inputs are selected
-  session$onFlushed(function() { 
+  session$onFlushed(function() {
     image_urls <- textiles_cleaned$image_filename_app
-    session$sendCustomMessage(type = "update_images", 
-                              message = list(image_urls = image_urls))
+    #HARDCODED (sketchy??)
+    display_images(image_urls[1:12])
   })
 
   #Wait for any inputs to occur  
@@ -335,9 +342,58 @@ server <- function(input, output, session) {
       filtered_data <- filtered_or()  
     }
     
+    #Display number of images for given page
+    start <- ((rv$page_number - 1) * rv$page_size) + 1
+    
+    #End of page index will either be the position of the last photo that fills 
+    #up the page or the last photo of the gallery
+    end <- min(rv$page_number * rv$page_size, nrow(filtered_data))
+    
     #Call function to display images to users screen
-    display_images(filtered_data$image_filename_app)
+    display_images(filtered_data$image_filename_app[start:end])
   })
+  
+  #Produce text for page information
+  output$page_details <- renderText({ 
+    #If user wants modifiers to be "And-ed" together, call respective reactive function
+    if (input$and_or == "AND") { 
+      filtered_data <- filtered_and()
+    }  
+    #If user wants modifiers to be "Or-ed" together, call respective reactive function
+    else { 
+      filtered_data <- filtered_or()  
+    }
+    
+    pages_needed <- ceiling(nrow(filtered_data) / rv$page_size)
+    
+    #Display what number page user is on out of the total number of pages
+    paste("Page ", rv$page_number, " of ", pages_needed)
+  })
+  
+  
+  #Check for previous page call and decrement page number if there is a previous page
+  observeEvent (input$prev_page, { 
+    if (rv$page_number > 1) { 
+      rv$page_number <- rv$page_number - 1
+    }  
+  })
+  
+  
+  #Check for next page call and increment page number if there is a next page
+  observeEvent (input$next_page, { 
+    if (input$and_or == "AND") { 
+      filtered_data <- filtered_and()
+    }
+    else { 
+      filtered_data <- filtered_or()
+    }
+    
+    if (rv$page_number * rv$page_size < nrow(filtered_data)) { 
+      rv$page_number <- rv$page_number + 1  
+    }
+  })
+  
+  
   
   #Pass output to UI for displaying
   output$images <- renderUI({ 
