@@ -127,14 +127,53 @@ ui <- fluidPage(
         transform: rotate(90deg);
       }
       
-      #custom-modal .modal-dialog { 
-      height: 1000px !important;
-      max-width: none !important;
+      //#custom-modal .modal-dialog { 
+      //height: 1000px !important;
+      //max-width: none !important;
+      //}
+      
+      //#custom-modal .modal-content { 
+      //height: 80vh;
+      //}
+      
+      .modal-body { 
+        display: flex;
+        justify-content: space-between;
       }
       
-      #custom-modal .modal-content { 
-      height: 80vh;
+      .content, .image-container { 
+        flex: 1;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
+      
+      .image-container { 
+        overflow: hidden;
+      }
+      
+      .image-container img { 
+        max-width: 100%;
+        max-height: 100%;
+        width: 300px;
+        height: auto;
+        margin-left: 10px;
+        margin-right: 10px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        transition: transform 0.5s ease;
+      }
+      
+      .image-container img:hover { 
+        transform: scale(1.5);
+      }
+      
+      .modal-dialog { 
+        max-width: 100%;
+        height: 80%;
+      }
+      
     "))
   ),
     
@@ -200,7 +239,7 @@ server <- function(input, output, session) {
   rv <- reactiveValues(filter_colors = FALSE, 
                        filtered_color_input = list(), 
                        page_number = 1, 
-                       page_size = 12)
+                       page_size = 9)
   
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
@@ -316,7 +355,7 @@ server <- function(input, output, session) {
   session$onFlushed(function() {
     image_urls <- textiles_cleaned$image_filename_app
     #HARDCODED (sketchy??)
-    display_images(image_urls[1:12])
+    display_images(image_urls[1:9])
   })
 
   #Wait for any inputs to occur  
@@ -458,27 +497,31 @@ server <- function(input, output, session) {
     })
     
     showModal(modalDialog( 
-      id = "custom-modal",
-      title = "Textile Description", 
       
-      #Creates custom layout of modaldialog
-      tags$div(
-        #Aligns details and image around center, puts gap in between 
-        style = "display: flex; align-items: center; gap: 10px",
-        
-        #Displays the details of each textile clicked on
-        tags$div(
+      title = "Image Information",
+      
+      #NEW CHANGES:::
+      div(
+        class = "modal-body", 
+        div(
+          class = "content", 
           uiOutput("textile_details")
-        ),
-        
-        #Display image within modal of fixed width (auto height to retain aspect-ratio)
-        tags$img(
-          src = selected_url, 
-          style = "margin-right: 10px; height: 300px; width: auto;", 
-          class = "zoomed_image", 
-          'data-path' = selected_url
+        ), 
+        div(
+          class = "image-container", 
+          img(
+            src = selected_url, 
+            #height = "300px", 
+            # width = "80%", 
+            class = "zoomed_image",
+            'data-path' = selected_url
+            #max-height = "300px"
+          )
         )
-      ), 
+      ),
+      
+      
+      
       size = "l", 
       easyClose = TRUE
     ))
@@ -497,7 +540,7 @@ server <- function(input, output, session) {
     showModal(modalDialog( 
       tags$img(
         src = selected_url, 
-        style = "max-width: 100%; height: auto;"
+        style = "width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
       ),
       size = "l"
     ))
@@ -508,3 +551,23 @@ server <- function(input, output, session) {
 #Run the app
 shinyApp(ui = ui, server = server)
 
+
+
+#Creates custom layout of modaldialog
+# tags$div(
+#   #Aligns details and image around center, puts gap in between 
+#   style = "display: flex; align-items: center; gap: 10px",
+#   
+#   #Displays the details of each textile clicked on
+#   tags$div(
+#     uiOutput("textile_details")
+#   ),
+#   
+#   #Display image within modal of fixed width (auto height to retain aspect-ratio)
+#   tags$img(
+#     src = selected_url, 
+#     style = "height: 300px; width: auto; max-width: 70%", #margin-right: 10px; 
+#     class = "zoomed_image", 
+#     'data-path' = selected_url
+#   )
+# ), 
