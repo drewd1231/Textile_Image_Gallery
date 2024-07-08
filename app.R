@@ -11,6 +11,9 @@ library(shinythemes)
 library(shinyWidgets)
 library(shinyPagerUI)
 
+#Page size global
+PAGE_SIZE = 9
+
 #Set working directory to correct folder
 setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
 
@@ -100,13 +103,18 @@ ui <- fluidPage(
     selectInput("fiber_choice", "Search by fiber", 
                 choices = c("All Fibers", fiber_list)),
     
-    textOutput("name_out")
+    tags$hr(),
+    actionButton("reset_button", "Reset all inputs")
+    
   ), 
   
   mainPanel(
     uiOutput("images"), 
-    actionButton("prev_page", "Previous"),
-    actionButton("next_page", "Next"), 
+    # uiOutput("no_images"),
+    actionButton("prev_page", "Previous", 
+                 style = "margin-top: 10px; margin-bottom: 5px;"),
+    actionButton("next_page", "Next", 
+                 style = "margin-top: 10px; margin-bottom: 5px;"), 
     textOutput("page_details")
   ), 
   tags$head(
@@ -127,15 +135,6 @@ ui <- fluidPage(
         transform: rotate(90deg);
       }
       
-      //#custom-modal .modal-dialog { 
-      //height: 1000px !important;
-      //max-width: none !important;
-      //}
-      
-      //#custom-modal .modal-content { 
-      //height: 80vh;
-      //}
-      
       .modal-body { 
         display: flex;
         justify-content: space-between;
@@ -145,12 +144,14 @@ ui <- fluidPage(
         flex: 1;
         padding: 10px;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
       }
       
       .image-container { 
         overflow: hidden;
+        text-align: center;
       }
       
       .image-container img { 
@@ -165,8 +166,14 @@ ui <- fluidPage(
         transition: transform 0.5s ease;
       }
       
+      .image-container .caption { 
+        display: block;
+        margin-top: 10px;
+        font-size: 15px;
+      }
+      
       .image-container img:hover { 
-        transform: scale(1.5);
+        transform: scale(1.25);
       }
       
       .modal-dialog { 
@@ -239,7 +246,9 @@ server <- function(input, output, session) {
   rv <- reactiveValues(filter_colors = FALSE, 
                        filtered_color_input = list(), 
                        page_number = 1, 
-                       page_size = 9)
+                       page_size = PAGE_SIZE, 
+                       prev_filtered_rows = nrow(textiles_cleaned), 
+                       show_images = TRUE)
   
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
@@ -355,7 +364,7 @@ server <- function(input, output, session) {
   session$onFlushed(function() {
     image_urls <- textiles_cleaned$image_filename_app
     #HARDCODED (sketchy??)
-    display_images(image_urls[1:9])
+    display_images(image_urls[1:PAGE_SIZE])
   })
 
   #Wait for any inputs to occur  
@@ -381,15 +390,35 @@ server <- function(input, output, session) {
       filtered_data <- filtered_or()  
     }
     
+    
+    
+    #If an input was changed so that a new set of images is being shown, return user to first page
+    if (rv$prev_filtered_rows != nrow(filtered_data)) {
+      rv$page_number = 1  
+      rv$prev_filtered_rows = nrow(filtered_data)
+    }
     #Display number of images for given page
     start <- ((rv$page_number - 1) * rv$page_size) + 1
     
     #End of page index will either be the position of the last photo that fills 
     #up the page or the last photo of the gallery
     end <- min(rv$page_number * rv$page_size, nrow(filtered_data))
-    
-    #Call function to display images to users screen
     display_images(filtered_data$image_filename_app[start:end])
+    
+    
+    
+    #If no images match the inputs do not display anything (or maybe display message saying no inputs found??)
+    # if (nrow(filtered_data) == 0) { 
+    #   rv$show_images = FALSE
+    # }
+    # else { 
+    #   #Call function to display images to users screen
+    #   rv$show_images = TRUE
+    # }
+      
+    
+    #WAS HERE BEFORE
+    
   })
   
   #Produce text for page information
@@ -432,13 +461,30 @@ server <- function(input, output, session) {
     }
   })
   
-  
-  
-  #Pass output to UI for displaying
-  output$images <- renderUI({ 
-    #Provides R with the HTML output produced by the js
-    tags$div(id = "image_gallery", class = "image-gallery")
+  #Check for reset button click
+  observeEvent (input$reset_button, { 
+    updateSelectInput(session, "textile_name", selected = "All Names")
+    updateRadioGroupButtons(session, "and_or", selected = "AND")
+    updateSelectInput(session, "color_choice", selected = "")
+    updateSelectInput(session, "pattern_choice", selected = "All Patterns")
+    updateSelectInput(session, "process_choice", selected = "All Processes")
+    updateSelectInput(session, "weave_choice", selected = "All Weaves")
+    updateSelectInput(session, "fiber_choice", selected = "All Fibers")
   })
+  
+  
+    #Pass output to UI for displaying
+    output$images <- renderUI({ 
+      #print(rv$show_images)
+      #if (rv$show_images == TRUE) { 
+      #Provides R with the HTML output produced by the js
+      tags$div(id = "image_gallery", class = "image-gallery")
+      #}
+      #else { 
+       # p("Criteria does not match")
+      #}
+    })
+  
   
   #Check if user has clicked on an image
   observeEvent(input$selected_image, { 
@@ -511,16 +557,12 @@ server <- function(input, output, session) {
           class = "image-container", 
           img(
             src = selected_url, 
-            #height = "300px", 
-            # width = "80%", 
             class = "zoomed_image",
             'data-path' = selected_url
-            #max-height = "300px"
-          )
-        )
+          ),
+          div(class = "caption", strong("Click on image for full size"))
+        ), 
       ),
-      
-      
       
       size = "l", 
       easyClose = TRUE
@@ -540,7 +582,7 @@ server <- function(input, output, session) {
     showModal(modalDialog( 
       tags$img(
         src = selected_url, 
-        style = "width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
+        style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
       ),
       size = "l"
     ))
