@@ -14,6 +14,8 @@ library(shinyPagerUI)
 #Page size global
 PAGE_SIZE = 9
 
+#reactlog_enable() 
+
 #Set working directory to correct folder
 setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
 
@@ -115,7 +117,8 @@ ui <- fluidPage(
                  style = "margin-top: 10px; margin-bottom: 5px;"),
     actionButton("next_page", "Next", 
                  style = "margin-top: 10px; margin-bottom: 5px;"), 
-    textOutput("page_details")
+    textOutput("page_details") 
+    #textOutput("no_results", )
   ), 
   tags$head(
     #Creates HTML layout for how images are displayed (4 columns, gap in between, etc.)
@@ -189,6 +192,7 @@ ui <- fluidPage(
       Shiny.addCustomMessageHandler("update_images", function(message) { 
         update_images(message.image_urls);  
       });
+      
     
        function update_images(image_urls) { 
         
@@ -198,8 +202,18 @@ ui <- fluidPage(
           return;
          }
         
-        //Clears the gallery before we look for images we want
+         //Clears the gallery before we look for images we want
          $("#image_gallery").empty();
+         
+         //console.log(image_urls.length);
+         //Check if there are no images matching input
+         if (image_urls[0] === null) {
+            console.log("here");
+            var noImagesMessage = $("<h3>").text("No images match your criteria");
+            $("#image_gallery").append(noImagesMessage);
+            return;
+        }
+         
          
          //Loops through all urls passed by reactive R input
          image_urls.forEach(function(url) { 
@@ -208,6 +222,13 @@ ui <- fluidPage(
            var img = $("<img>").attr("src", url).addClass("gallery-image").click(function() { 
               Shiny.setInputValue("selected_image", url, {priority: "event"});
            });
+           
+           //img.addEventListener("mouseover", function()) { 
+           // this.style.cursor = "pointer"; 
+          // }
+          // img.addEventListener("mouseout", function()) { 
+            //this.style.cursor = "default";
+           //}
            
            img.on("load", function() { 
             if (this.naturalHeight > this.naturalWidth) { 
@@ -233,22 +254,29 @@ ui <- fluidPage(
 #Define Server Logic
 server <- function(input, output, session) { 
   
-  #Function that sends message to js to update images
-  display_images <- function(url_list) { 
-    image_urls <- as.list(url_list)
-    
-    #Sends message to js to call update_images function
-    session$sendCustomMessage(type = "update_images", 
-                              message = list(image_urls = image_urls))
-  }
-  
   #initialize reactive values that will be passed from observe block to reactive block
   rv <- reactiveValues(filter_colors = FALSE, 
                        filtered_color_input = list(), 
                        page_number = 1, 
                        page_size = PAGE_SIZE, 
-                       prev_filtered_rows = nrow(textiles_cleaned), 
-                       show_images = TRUE)
+                       prev_filtered_rows = nrow(textiles_cleaned) 
+                       #show_images = FALSE, 
+                       #div_updated = FALSE
+                       )
+  
+  
+  #Function that sends message to js to update images
+  display_images <- function(url_list) { 
+    #print("display func")
+    image_urls <- as.list(url_list)
+    
+    #Sends message to js to call update_images function
+    session$sendCustomMessage(type = "update_images", 
+                              message = list(image_urls = image_urls))
+    #print("images added")
+  }
+  
+  
   
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
@@ -299,6 +327,7 @@ server <- function(input, output, session) {
     curr_filtered
   })
   
+  
   #Reactive function we want to call when user selects "OR"
   filtered_or <- reactive ({ 
     name_filtered <- textiles_cleaned
@@ -309,67 +338,80 @@ server <- function(input, output, session) {
         filter(textile_name == input$textile_name)
     }
 
-    curr_filtered <- name_filtered
+    #curr_filtered <- name_filtered
+    prev_ds <- textiles_cleaned[FALSE,]
     
+    #ISSUE WITH FINDING ALL OF THE COLORS
     #Check if there are colors to be filtered by
     if (rv$filter_colors == TRUE) {
       
+      
       #Loop through colors in input list and filter the data by each one
       for (color in rv$filtered_color_input) {
-        curr_filtered <- curr_filtered %>%
+        prev_ds <- name_filtered %>%
           filter(grepl(color, textile_color_visual)) %>% 
-            rbind(curr_filtered) %>% 
+            rbind(prev_ds) %>% 
               unique()
       }
     }
     
     #Filter data based on name and pattern then combine with previously filtered data
     if (input$pattern_choice != "All Patterns") { 
-      curr_filtered <- name_filtered %>% 
+      #prev_ds <- textiles_cleaned[FALSE,]
+      prev_ds <- name_filtered %>% 
         filter(grepl(input$pattern_choice, textile_pattern_visual)) %>% 
-          rbind(curr_filtered) %>% 
+          rbind(prev_ds) %>% 
             unique()
     }
     
     #Filter data based on name and process then combine with previously filtered data
     if (input$process_choice != "All Processes") { 
-      curr_filtered <- name_filtered %>% 
+      #prev_ds <- textiles_cleaned[FALSE,]
+      prev_ds <- name_filtered %>% 
         filter(grepl(input$process_choice, textile_process_visual)) %>% 
-          rbind(curr_filtered) %>% 
+          rbind(prev_ds) %>% 
             unique()
     }
     
     #Filter data based on name and weave then combine with previously filtered data
     if (input$weave_choice != "All Weaves") { 
-      curr_filtered <- name_filtered %>% 
+      #prev_ds <- textiles_cleaned[FALSE,]
+      prev_ds <- name_filtered %>% 
         filter(grepl(input$weave_choice, textile_weave_visual)) %>% 
-          rbind(curr_filtered) %>% 
+          rbind(prev_ds) %>% 
             unique()
     }
     
     #Filter data based on name and fiber then combine with previously filtered data
     if (input$fiber_choice != "All Fibers") { 
-      curr_filtered <- name_filtered %>% 
+      #prev_ds <- textiles_cleaned[FALSE,]
+      prev_ds <- name_filtered %>% 
         filter(grepl(input$fiber_choice, textile_fiber_visual)) %>% 
-          rbind(curr_filtered) %>% 
+          rbind(prev_ds) %>% 
             unique()
     }
-    
     #Return filtered data
-    curr_filtered
+    if (nrow(prev_ds) == 0) { 
+      name_filtered  
+    }
+    else { 
+      prev_ds
+    }
   })
 
+  
+  
   
   #Display images initially before any inputs are selected
   session$onFlushed(function() {
     image_urls <- textiles_cleaned$image_filename_app
-    #HARDCODED (sketchy??)
+
     display_images(image_urls[1:PAGE_SIZE])
   })
 
+  
   #Wait for any inputs to occur  
   observe({ 
-    
     #Convert vector of color inputs to list
     rv$filtered_color_input <- as.list(input$color_choice)
     
@@ -380,7 +422,9 @@ server <- function(input, output, session) {
     else { 
       rv$filter_colors = TRUE
     }
-
+  })
+  
+  observe ({ 
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
       filtered_data <- filtered_and()
@@ -390,35 +434,31 @@ server <- function(input, output, session) {
       filtered_data <- filtered_or()  
     }
     
-    
-    
     #If an input was changed so that a new set of images is being shown, return user to first page
     if (rv$prev_filtered_rows != nrow(filtered_data)) {
-      rv$page_number = 1  
-      rv$prev_filtered_rows = nrow(filtered_data)
+      rv$page_number <- 1  
+      rv$prev_filtered_rows <- nrow(filtered_data)
     }
+  })
+    
+  observe ({
+    #If user wants modifiers to be "And-ed" together, call respective reactive function
+    if (input$and_or == "AND") { 
+      filtered_data <- filtered_and()
+    }  
+    #If user wants modifiers to be "Or-ed" together, call respective reactive function
+    else { 
+      filtered_data <- filtered_or()  
+    }
+    
     #Display number of images for given page
     start <- ((rv$page_number - 1) * rv$page_size) + 1
     
     #End of page index will either be the position of the last photo that fills 
     #up the page or the last photo of the gallery
     end <- min(rv$page_number * rv$page_size, nrow(filtered_data))
+    
     display_images(filtered_data$image_filename_app[start:end])
-    
-    
-    
-    #If no images match the inputs do not display anything (or maybe display message saying no inputs found??)
-    # if (nrow(filtered_data) == 0) { 
-    #   rv$show_images = FALSE
-    # }
-    # else { 
-    #   #Call function to display images to users screen
-    #   rv$show_images = TRUE
-    # }
-      
-    
-    #WAS HERE BEFORE
-    
   })
   
   #Produce text for page information
@@ -473,17 +513,10 @@ server <- function(input, output, session) {
   })
   
   
-    #Pass output to UI for displaying
-    output$images <- renderUI({ 
-      #print(rv$show_images)
-      #if (rv$show_images == TRUE) { 
-      #Provides R with the HTML output produced by the js
-      tags$div(id = "image_gallery", class = "image-gallery")
-      #}
-      #else { 
-       # p("Criteria does not match")
-      #}
-    })
+  #Pass output to UI for displaying
+  output$images <- renderUI({ 
+    tags$div(id = "image_gallery", class = "image-gallery")
+  })
   
   
   #Check if user has clicked on an image
