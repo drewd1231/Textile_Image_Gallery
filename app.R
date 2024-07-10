@@ -205,11 +205,12 @@ ui <- fluidPage(
          //Clears the gallery before we look for images we want
          $("#image_gallery").empty();
          
-         //console.log(image_urls.length);
          //Check if there are no images matching input
          if (image_urls[0] === null) {
             console.log("here");
             var noImagesMessage = $("<h3>").text("No images match your criteria");
+            
+            //Add text to image_gallery object to tell user that search is invalid
             $("#image_gallery").append(noImagesMessage);
             return;
         }
@@ -260,20 +261,16 @@ server <- function(input, output, session) {
                        page_number = 1, 
                        page_size = PAGE_SIZE, 
                        prev_filtered_rows = nrow(textiles_cleaned) 
-                       #show_images = FALSE, 
-                       #div_updated = FALSE
                        )
   
   
   #Function that sends message to js to update images
   display_images <- function(url_list) { 
-    #print("display func")
     image_urls <- as.list(url_list)
     
     #Sends message to js to call update_images function
     session$sendCustomMessage(type = "update_images", 
                               message = list(image_urls = image_urls))
-    #print("images added")
   }
   
   
@@ -338,14 +335,12 @@ server <- function(input, output, session) {
         filter(textile_name == input$textile_name)
     }
 
-    #curr_filtered <- name_filtered
+    #Initialize empty dataframe to incrementally update with each input filter
     prev_ds <- textiles_cleaned[FALSE,]
     
-    #ISSUE WITH FINDING ALL OF THE COLORS
+
     #Check if there are colors to be filtered by
     if (rv$filter_colors == TRUE) {
-      
-      
       #Loop through colors in input list and filter the data by each one
       for (color in rv$filtered_color_input) {
         prev_ds <- name_filtered %>%
@@ -390,6 +385,7 @@ server <- function(input, output, session) {
           rbind(prev_ds) %>% 
             unique()
     }
+    
     #Return filtered data
     if (nrow(prev_ds) == 0) { 
       name_filtered  
@@ -400,17 +396,16 @@ server <- function(input, output, session) {
   })
 
   
-  
-  
   #Display images initially before any inputs are selected
   session$onFlushed(function() {
     image_urls <- textiles_cleaned$image_filename_app
-
     display_images(image_urls[1:PAGE_SIZE])
   })
 
   
-  #Wait for any inputs to occur  
+  #Observe blocks split up to minimize redundant calling of reactive values
+  
+  #First observe determines if color filter should be added
   observe({ 
     #Convert vector of color inputs to list
     rv$filtered_color_input <- as.list(input$color_choice)
@@ -424,6 +419,7 @@ server <- function(input, output, session) {
     }
   })
   
+  #Second observe sets the page number back to 1 if image gallery has changed
   observe ({ 
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
@@ -441,6 +437,7 @@ server <- function(input, output, session) {
     }
   })
     
+  #Third observe displays the contents of the current page if inputs are changed or if page number is changed
   observe ({
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
@@ -460,6 +457,7 @@ server <- function(input, output, session) {
     
     display_images(filtered_data$image_filename_app[start:end])
   })
+  
   
   #Produce text for page information
   output$page_details <- renderText({ 
@@ -575,22 +573,24 @@ server <- function(input, output, session) {
       )
     })
     
+    
     showModal(modalDialog( 
       
       title = "Image Information",
-      
-      #NEW CHANGES:::
       div(
         class = "modal-body", 
         div(
+          #Displays details about textile on left side of modal dialog
           class = "content", 
           uiOutput("textile_details")
         ), 
         div(
+          #Creates space for image and caption below image
           class = "image-container", 
           img(
             src = selected_url, 
             class = "zoomed_image",
+            #Provides javascript with the path to the image in case user wants zoomed version of the image
             'data-path' = selected_url
           ),
           div(class = "caption", strong("Click on image for full size"))
@@ -625,24 +625,3 @@ server <- function(input, output, session) {
 
 #Run the app
 shinyApp(ui = ui, server = server)
-
-
-
-#Creates custom layout of modaldialog
-# tags$div(
-#   #Aligns details and image around center, puts gap in between 
-#   style = "display: flex; align-items: center; gap: 10px",
-#   
-#   #Displays the details of each textile clicked on
-#   tags$div(
-#     uiOutput("textile_details")
-#   ),
-#   
-#   #Display image within modal of fixed width (auto height to retain aspect-ratio)
-#   tags$img(
-#     src = selected_url, 
-#     style = "height: 300px; width: auto; max-width: 70%", #margin-right: 10px; 
-#     class = "zoomed_image", 
-#     'data-path' = selected_url
-#   )
-# ), 
