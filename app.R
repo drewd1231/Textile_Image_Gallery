@@ -105,8 +105,12 @@ ui <- fluidPage(
     selectInput("fiber_choice", "Search by fiber", 
                 choices = c("All Fibers", fiber_list)),
     
+    actionButton("comparison_button", "Compare two textiles by material id number"),
+    
     tags$hr(),
-    actionButton("reset_button", "Reset all inputs")
+    actionButton("reset_button", "Reset all inputs"), 
+    
+    
     
   ), 
   
@@ -141,6 +145,7 @@ ui <- fluidPage(
       .modal-body { 
         display: flex;
         justify-content: space-between;
+        align-items: center;
       }
       
       .content, .image-container { 
@@ -176,7 +181,13 @@ ui <- fluidPage(
       }
       
       .image-container img:hover { 
-        transform: scale(1.25);
+        transform: scale(1.1);
+      }
+      
+      //Insert class for new left/right images? or not needed?
+      .comparison-container { 
+        justify-content: space-between;
+        align-items: center;
       }
       
       .modal-dialog { 
@@ -570,7 +581,6 @@ server <- function(input, output, session) {
       )
     })
     
-    
     showModal(modalDialog( 
       
       title = "Image Information",
@@ -599,6 +609,111 @@ server <- function(input, output, session) {
     ))
   })
   
+  
+  showComparison <- function(selected_textile_1, selected_textile_2) {
+    selected_info_1 <- textiles_cleaned %>% 
+      filter(image_filename_app == selected_textile_1)
+    
+    selected_info_2 <- textiles_cleaned %>% 
+      filter(image_filename_app == selected_textile_2)
+    
+    print(selected_textile_1)
+    
+      showModal(modalDialog(
+        title = "Textile Comparison", 
+        div(
+          class = "modal-body", 
+          div(class = "content",
+              selectInput("textile_id_1", "Select First Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_1),
+              #image_url <- paste(selected_textile_1)
+              #print(input$textile_id_1),
+              div(class = "image-container", 
+                  img(src = selected_textile_1),
+
+                        #class = "zoomed_image", 
+                        #'data-path' = "mat_001.jpg"
+                    
+                  div(class = "caption", 
+                      tagList( 
+                        tags$p(strong("Textile Name: "), selected_info_1$textile_name), 
+                        tags$p(strong("Text from source: "), selected_info_1$text_source),
+                        tags$p(strong("Color: "), selected_info_1$textile_color_visual), 
+                        tags$p(strong("Fiber: "), selected_info_1$textile_fiber_visual), 
+                        tags$p(strong("Pattern: "), selected_info_1$textile_pattern_visual),
+                        tags$p(strong("Process: "), selected_info_1$textile_process_visual), 
+                        tags$p(strong("Weave: "), selected_info_1$textile_weave_visual), 
+                        tags$p(strong("Date: "), selected_info_1$orig_date), 
+                        tags$p(strong("Additional Info: "), selected_info_1$addtl_info), 
+                        tags$p(strong("Search for "), strong(selected_info_1$textile_name), strong("in: ")),
+                        tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
+                        tags$p(),
+                        tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
+                        tags$p(),
+                    )
+                  )
+                  
+              )
+              
+          ),
+          div(class = "content", 
+              selectInput("textile_id_2", "Select First Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_2),
+              #image_url <- paste(selected_textile_1)
+              #print(input$textile_id_1),
+              div(class = "image-container", 
+                  img(src = selected_textile_2),
+                  
+                  #class = "zoomed_image", 
+                  #'data-path' = "mat_001.jpg"
+                  
+                  div(class = "caption", 
+                      tagList( 
+                        tags$p(strong("Textile Name: "), selected_info_2$textile_name), 
+                        tags$p(strong("Text from source: "), selected_info_2$text_source),
+                        tags$p(strong("Color: "), selected_info_2$textile_color_visual), 
+                        tags$p(strong("Fiber: "), selected_info_2$textile_fiber_visual), 
+                        tags$p(strong("Pattern: "), selected_info_2$textile_pattern_visual),
+                        tags$p(strong("Process: "), selected_info_2$textile_process_visual), 
+                        tags$p(strong("Weave: "), selected_info_2$textile_weave_visual), 
+                        tags$p(strong("Date: "), selected_info_2$orig_date), 
+                        tags$p(strong("Additional Info: "), selected_info_2$addtl_info), 
+                        tags$p(strong("Search for "), strong(selected_info_2$textile_name), strong("in: ")),
+                        tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
+                        tags$p(),
+                        tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
+                        tags$p(),
+                    )
+                  )
+              )
+          )
+        ), 
+        size = 'l'
+      ))
+  }
+  
+  
+  #Check for user comparison between textiles
+  observeEvent(input$comparison_button, {   
+    showComparison("mat_001.jpg", "mat_002.jpg")
+  })
+  
+  observeEvent(input$textile_id_1,  { 
+    textile_2_url <- "mat_002.jpg"
+    if (!is.null(input$textile_id_2)) { 
+      textile_2_url <- input$textile_id_2
+    }
+    removeModal()
+    showComparison(input$textile_id_1, textile_2_url)
+  })
+  
+  observeEvent(input$textile_id_2, { 
+    textile_1_url <- "mat_001.jpg"
+    if (!is.null(input$textile_id_1)) { 
+      textile_1_url <- input$textile_id_1
+    }
+    removeModal()
+    showComparison(textile_1_url, input$textile_id_2)
+  })
+
   #Display zoomed version of image previously clicked
   observeEvent(input$zoomed_image, { 
 
