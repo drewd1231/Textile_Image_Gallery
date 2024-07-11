@@ -224,18 +224,15 @@ ui <- fluidPage(
               Shiny.setInputValue("selected_image", url, {priority: "event"});
            });
            
-           //img.addEventListener("mouseover", function()) { 
-           // this.style.cursor = "pointer"; 
-          // }
-          // img.addEventListener("mouseout", function()) { 
-            //this.style.cursor = "default";
-           //}
+           //Changes users cursor when hovering above an image
+           img.css("cursor", "pointer");
            
-           img.on("load", function() { 
-            if (this.naturalHeight > this.naturalWidth) { 
-              $(this).css("transform", "rotated");
-            }
-           });
+           
+           //img.on("load", function() { 
+            //if (this.naturalHeight > this.naturalWidth) { 
+              //$(this).css("transform", "rotated");
+            //}
+           //});
            
            //Appends each image object to the "image_gallery"
            $("#image_gallery").append(img);
