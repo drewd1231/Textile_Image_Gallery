@@ -132,6 +132,7 @@ ui <- fluidPage(
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
       }
+      
       .gallery-image { 
         width: 100%;
         height: 250px;
@@ -148,7 +149,7 @@ ui <- fluidPage(
         align-items: center;
       }
       
-      .content, .image-container { 
+      .content, .image-container, .comparison-container { 
         flex: 1;
         padding: 10px;
         display: flex;
@@ -157,16 +158,14 @@ ui <- fluidPage(
         justify-content: center;
       }
       
-      .image-container { 
+      .image-container, .comparison-container { 
         overflow: hidden;
         text-align: center;
       }
       
-      .image-container img { 
+      .image-container img, .comparison-container img { 
         max-width: 100%;
         max-height: 100%;
-        width: 300px;
-        height: auto;
         margin-left: 10px;
         margin-right: 10px;
         margin-top: 20px;
@@ -174,21 +173,38 @@ ui <- fluidPage(
         transition: transform 0.5s ease;
       }
       
-      .image-container .caption { 
+      .image-container img { 
+        width: 300px;
+        height: auto;
+      }
+      
+      .comparison-container img { 
+        height: 200px;
+        width: auto;
+      }
+      
+      .image-container .caption, .comparison-container .caption{ 
         display: block;
         margin-top: 10px;
-        font-size: 15px;
+      }
+      
+      .image-container .caption { 
+      font-size: 15px;
+      }
+      
+      .comparison-container .caption { 
+        font-size: 12px;
       }
       
       .image-container img:hover { 
         transform: scale(1.1);
       }
       
-      //Insert class for new left/right images? or not needed?
-      .comparison-container { 
-        justify-content: space-between;
-        align-items: center;
-      }
+      //.comparison-container .caption { 
+        //display: block;
+        //margin-top: 10px;
+        //font-size: 12px;
+      //}
       
       .modal-dialog { 
         max-width: 100%;
@@ -239,11 +255,12 @@ ui <- fluidPage(
            img.css("cursor", "pointer");
            
            
-           //img.on("load", function() { 
-            //if (this.naturalHeight > this.naturalWidth) { 
-              //$(this).css("transform", "rotated");
-            //}
-           //});
+           img.on("load", function() { 
+            if (this.naturalHeight > this.naturalWidth) { 
+              console.log("got here");
+              $(this).css("transform", "rotate()");
+            }
+           });
            
            //Appends each image object to the "image_gallery"
            $("#image_gallery").append(img);
@@ -279,6 +296,55 @@ server <- function(input, output, session) {
     #Sends message to js to call update_images function
     session$sendCustomMessage(type = "update_images", 
                               message = list(image_urls = image_urls))
+  }
+  
+  get_image_details <- function(image_selection) { 
+    
+    #Various information about source of the textile in one string
+    collection_image_info <- paste(image_selection$collection, image_selection$id_no, image_selection$image_filename_orig, sep = ", ")
+    
+    #Split the textiles name up into vector if it has multiple names within it
+    find_name <- strsplit(image_selection$textile_name, split = ", ") %>% 
+      unlist() %>% 
+      strsplit(split = "/") %>% 
+      unlist()
+    
+    #Get first name listed if there are multiple names
+    find_name <- find_name[1]
+    
+    #Check if the name found is within the names in the glossary
+    glossary_page <- grep(find_name[1], glossary_textiles_list)
+    
+    #If name is in glossary, record how it is labeled on the website
+    in_glossary <- glossary_textiles_list[glossary_page[1]]
+    
+    #Put together link if glossary page for textile exists
+    if (!is.na(in_glossary)) { 
+      glossary_url <- paste("https://dutchtextiletrade.org/textiles/", in_glossary, "/", sep = "")
+    }
+    else{ 
+      glossary_url <- "https://dutchtextiletrade.org/textiles/"
+    }
+    
+    
+    tagList( 
+      tags$p(strong("Textile Name: "), image_selection$textile_name), 
+      tags$p(strong("Text from source: "), image_selection$text_source),
+      tags$p(strong("Color: "), image_selection$textile_color_visual), 
+      tags$p(strong("Fiber: "), image_selection$textile_fiber_visual), 
+      tags$p(strong("Pattern: "), image_selection$textile_pattern_visual),
+      tags$p(strong("Process: "), image_selection$textile_process_visual), 
+      tags$p(strong("Weave: "), image_selection$textile_weave_visual), 
+      tags$p(strong("Date: "), image_selection$orig_date), 
+      tags$p(strong("Additional Info: "), image_selection$addtl_info), 
+      tags$p(strong("Collection/image file: "), collection_image_info), 
+      tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
+      tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
+      tags$p(),
+      tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
+      tags$p(),
+      tags$a(href = glossary_url, strong("Glossary"))
+    )  
   }
   
   
@@ -532,53 +598,10 @@ server <- function(input, output, session) {
     #Retrieve information of image clicked on by user
     selected_info <- textiles_cleaned %>% 
       filter(image_filename_app == selected_url)
-    
-    #Various information about source of the textile in one string
-    collection_image_info <- paste(selected_info$collection, selected_info$id_no, selected_info$image_filename_orig, sep = ", ")
-    
-    #Split the textiles name up into vector if it has multiple names within it
-    find_name <- strsplit(selected_info$textile_name, split = ", ") %>% 
-      unlist() %>% 
-        strsplit(split = "/") %>% 
-          unlist()
-    
-    #Get first name listed if there are multiple names
-    find_name <- find_name[1]
-    
-    #Check if the name found is within the names in the glossary
-    glossary_page <- grep(find_name[1], glossary_textiles_list)
-    
-    #If name is in glossary, record how it is labeled on the website
-    in_glossary <- glossary_textiles_list[glossary_page[1]]
-    
-    #Put together link if glossary page for textile exists
-    if (!is.na(in_glossary)) { 
-      glossary_url <- paste("https://dutchtextiletrade.org/textiles/", in_glossary, "/", sep = "")
-    }
-    else{ 
-      glossary_url <- "https://dutchtextiletrade.org/textiles/"
-    }
       
     #Print details of image clicked on
     output$textile_details <- renderUI({ 
-      tagList( 
-        tags$p(strong("Textile Name: "), selected_info$textile_name), 
-        tags$p(strong("Text from source: "), selected_info$text_source),
-        tags$p(strong("Color: "), selected_info$textile_color_visual), 
-        tags$p(strong("Fiber: "), selected_info$textile_fiber_visual), 
-        tags$p(strong("Pattern: "), selected_info$textile_pattern_visual),
-        tags$p(strong("Process: "), selected_info$textile_process_visual), 
-        tags$p(strong("Weave: "), selected_info$textile_weave_visual), 
-        tags$p(strong("Date: "), selected_info$orig_date), 
-        tags$p(strong("Additional Info: "), selected_info$addtl_info), 
-        tags$p(strong("Collection/image file: "), collection_image_info), 
-        tags$p(strong("Search for "), strong(selected_info$textile_name), strong("in: ")),
-        tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
-        tags$p(),
-        tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
-        tags$p(),
-        tags$a(href = glossary_url, strong("Glossary"))
-      )
+      get_image_details(selected_info)
     })
     
     showModal(modalDialog( 
@@ -627,61 +650,31 @@ server <- function(input, output, session) {
               selectInput("textile_id_1", "Select First Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_1),
               #image_url <- paste(selected_textile_1)
               #print(input$textile_id_1),
-              div(class = "image-container", 
+              div(class = "comparison-container", 
                   img(src = selected_textile_1),
 
                         #class = "zoomed_image", 
                         #'data-path' = "mat_001.jpg"
                     
                   div(class = "caption", 
-                      tagList( 
-                        tags$p(strong("Textile Name: "), selected_info_1$textile_name), 
-                        tags$p(strong("Text from source: "), selected_info_1$text_source),
-                        tags$p(strong("Color: "), selected_info_1$textile_color_visual), 
-                        tags$p(strong("Fiber: "), selected_info_1$textile_fiber_visual), 
-                        tags$p(strong("Pattern: "), selected_info_1$textile_pattern_visual),
-                        tags$p(strong("Process: "), selected_info_1$textile_process_visual), 
-                        tags$p(strong("Weave: "), selected_info_1$textile_weave_visual), 
-                        tags$p(strong("Date: "), selected_info_1$orig_date), 
-                        tags$p(strong("Additional Info: "), selected_info_1$addtl_info), 
-                        tags$p(strong("Search for "), strong(selected_info_1$textile_name), strong("in: ")),
-                        tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
-                        tags$p(),
-                        tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
-                        tags$p(),
-                    )
+                      get_image_details(selected_info_1)
                   )
                   
               )
               
           ),
           div(class = "content", 
-              selectInput("textile_id_2", "Select First Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_2),
+              selectInput("textile_id_2", "Select Second Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_2),
               #image_url <- paste(selected_textile_1)
               #print(input$textile_id_1),
-              div(class = "image-container", 
+              div(class = "comparison-container", 
                   img(src = selected_textile_2),
                   
                   #class = "zoomed_image", 
                   #'data-path' = "mat_001.jpg"
                   
                   div(class = "caption", 
-                      tagList( 
-                        tags$p(strong("Textile Name: "), selected_info_2$textile_name), 
-                        tags$p(strong("Text from source: "), selected_info_2$text_source),
-                        tags$p(strong("Color: "), selected_info_2$textile_color_visual), 
-                        tags$p(strong("Fiber: "), selected_info_2$textile_fiber_visual), 
-                        tags$p(strong("Pattern: "), selected_info_2$textile_pattern_visual),
-                        tags$p(strong("Process: "), selected_info_2$textile_process_visual), 
-                        tags$p(strong("Weave: "), selected_info_2$textile_weave_visual), 
-                        tags$p(strong("Date: "), selected_info_2$orig_date), 
-                        tags$p(strong("Additional Info: "), selected_info_2$addtl_info), 
-                        tags$p(strong("Search for "), strong(selected_info_2$textile_name), strong("in: ")),
-                        tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
-                        tags$p(),
-                        tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
-                        tags$p(),
-                    )
+                      get_image_details(selected_info_2)
                   )
               )
           )
