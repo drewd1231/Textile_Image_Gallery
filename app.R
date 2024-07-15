@@ -143,10 +143,17 @@ ui <- fluidPage(
         transform: rotate(90deg);
       }
       
-      .modal-body { 
+      .modal-body, .comparison-body { 
         display: flex;
         justify-content: space-between;
+      }
+      
+      .modal-body { 
         align-items: center;
+      }
+      
+      .comparison-body { 
+        align-items: start;
       }
       
       .content, .image-container, .comparison-container { 
@@ -240,30 +247,34 @@ ui <- fluidPage(
             //Add text to image_gallery object to tell user that search is invalid
             $("#image_gallery").append(noImagesMessage);
             return;
-        }
+         }
          
          
          //Loops through all urls passed by reactive R input
          image_urls.forEach(function(url) { 
+         
+           var temp_image = new Image();
+           temp_image.src = url;
            
-           //Creates image object for each url and checks for click event
-           var img = $("<img>").attr("src", url).addClass("gallery-image").click(function() { 
-              Shiny.setInputValue("selected_image", url, {priority: "event"});
-           });
-           
-           //Changes users cursor when hovering above an image
-           img.css("cursor", "pointer");
+           //temp_image.onload = function() { 
            
            
-           img.on("load", function() { 
-            if (this.naturalHeight > this.naturalWidth) { 
-              console.log("got here");
-              $(this).css("transform", "rotate()");
-            }
-           });
-           
-           //Appends each image object to the "image_gallery"
-           $("#image_gallery").append(img);
+             //Creates image object for each url and checks for click event
+             var img = $("<img>").attr("src", url).addClass("gallery-image").click(function() { 
+                Shiny.setInputValue("selected_image", url, {priority: "event"});
+             });
+             
+             //Changes users cursor when hovering above an image
+             img.css("cursor", "pointer");
+             
+             //if (this.naturalHeight > this.naturalWidth) { 
+               // img.css("transform", "rotate(90deg)");
+                //$(this).addClass("rotated");
+             //}
+             
+             //Appends each image object to the "image_gallery"
+             $("#image_gallery").append(img);
+           //};
         });
        }
        
@@ -339,6 +350,7 @@ server <- function(input, output, session) {
       tags$p(strong("Additional Info: "), image_selection$addtl_info), 
       tags$p(strong("Collection/image file: "), collection_image_info), 
       tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
+      #tags$a(Shiny.setInputValue("comparison_button") , strong("Comparison Tool")),
       tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
       tags$p(),
       tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
@@ -351,7 +363,6 @@ server <- function(input, output, session) {
   
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
-    #print(filter_colors)
     curr_filtered <- textiles_cleaned
     
     #Filters data based on name
@@ -640,12 +651,11 @@ server <- function(input, output, session) {
     selected_info_2 <- textiles_cleaned %>% 
       filter(image_filename_app == selected_textile_2)
     
-    print(selected_textile_1)
     
       showModal(modalDialog(
         title = "Textile Comparison", 
         div(
-          class = "modal-body", 
+          class = "comparison-body", 
           div(class = "content",
               selectInput("textile_id_1", "Select First Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_1),
               #image_url <- paste(selected_textile_1)
@@ -666,7 +676,6 @@ server <- function(input, output, session) {
           div(class = "content", 
               selectInput("textile_id_2", "Select Second Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_2),
               #image_url <- paste(selected_textile_1)
-              #print(input$textile_id_1),
               div(class = "comparison-container", 
                   img(src = selected_textile_2),
                   
