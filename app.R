@@ -167,7 +167,7 @@ ui <- fluidPage(
       
       .image-container, .comparison-container { 
         overflow: hidden;
-        text-align: center;
+        text-align: left;
       }
       
       .image-container img, .comparison-container img { 
@@ -232,7 +232,8 @@ server <- function(input, output, session) {
                        filtered_color_input = list(), 
                        page_number = 1, 
                        page_size = PAGE_SIZE, 
-                       prev_filtered_rows = nrow(textiles_cleaned) 
+                       prev_filtered_rows = nrow(textiles_cleaned), 
+                       comparison_img_url = ""
                        )
   
   
@@ -247,6 +248,7 @@ server <- function(input, output, session) {
   
   get_image_details <- function(image_selection) { 
     
+    rv$comparison_img_url <- image_selection$image_filename_app
     #Various information about source of the textile in one string
     collection_image_info <- paste(image_selection$collection, image_selection$id_no, image_selection$image_filename_orig, sep = ", ")
     
@@ -286,7 +288,8 @@ server <- function(input, output, session) {
       tags$p(strong("Additional Info: "), image_selection$addtl_info), 
       tags$p(strong("Collection/image file: "), collection_image_info), 
       tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
-      #tags$a(Shiny.setInputValue("comparison_button") , strong("Comparison Tool")),
+      #tags$a("comparison_shortcut", href = "#", strong("Comparison Tool")),
+      tags$p(actionLink("comparison_tool", strong("Comparison Tool"))),
       tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
       tags$p(),
       tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
@@ -515,6 +518,7 @@ server <- function(input, output, session) {
       filtered_data <- filtered_or()
     }
     
+    #Have not reached end of images yet so page can be incremented
     if (rv$page_number * rv$page_size < nrow(filtered_data)) { 
       rv$page_number <- rv$page_number + 1  
     }
@@ -580,28 +584,32 @@ server <- function(input, output, session) {
   })
   
   
+  #Function to display modalDialog comparison tool with two textiles 
   showComparison <- function(selected_textile_1, selected_textile_2) {
+    
+    #Retrieve correct rows for first and second textile selections
     selected_info_1 <- textiles_cleaned %>% 
       filter(image_filename_app == selected_textile_1)
     
     selected_info_2 <- textiles_cleaned %>% 
       filter(image_filename_app == selected_textile_2)
     
-    
+      
+      #Create modalDialog
       showModal(modalDialog(
         title = "Textile Comparison", 
         div(
+          #Creates div for outer container that will contain two containers within (one for each textile)
           class = "comparison-body", 
+          #Creates div within outer container that will hold input selection, textile imag, and details below
           div(class = "content",
               selectInput("textile_id_1", "Select First Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_1),
-              #image_url <- paste(selected_textile_1)
-              #print(input$textile_id_1),
-              div(class = "comparison-container", 
-                  img(src = selected_textile_1),
 
-                        #class = "zoomed_image", 
-                        #'data-path' = "mat_001.jpg"
-                    
+              div(class = "comparison-container", 
+                  #Displays image
+                  img(src = selected_textile_1),
+                  
+                  #Retrieves details of textile to be displayed below image
                   div(class = "caption", 
                       get_image_details(selected_info_1)
                   )
@@ -611,12 +619,9 @@ server <- function(input, output, session) {
           ),
           div(class = "content", 
               selectInput("textile_id_2", "Select Second Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_2),
-              #image_url <- paste(selected_textile_1)
+              
               div(class = "comparison-container", 
                   img(src = selected_textile_2),
-                  
-                  #class = "zoomed_image", 
-                  #'data-path' = "mat_001.jpg"
                   
                   div(class = "caption", 
                       get_image_details(selected_info_2)
@@ -634,6 +639,13 @@ server <- function(input, output, session) {
     showComparison("mat_001.jpg", "mat_002.jpg")
   })
   
+  #Checks if user clicked on comparison tool link while viewing a textile description
+  observeEvent(input$comparison_tool, { 
+    #Calls comparison tool function
+    showComparison(rv$comparison_img_url, "mat_002.jpg")
+  })
+  
+  #Checks for new selection of first textile within comparison tool and updates image/details accordingly
   observeEvent(input$textile_id_1,  { 
     textile_2_url <- "mat_002.jpg"
     if (!is.null(input$textile_id_2)) { 
@@ -643,6 +655,7 @@ server <- function(input, output, session) {
     showComparison(input$textile_id_1, textile_2_url)
   })
   
+  #Checks for new selection of second textile within comparison tool and updates image/details accordingly
   observeEvent(input$textile_id_2, { 
     textile_1_url <- "mat_001.jpg"
     if (!is.null(input$textile_id_1)) { 
