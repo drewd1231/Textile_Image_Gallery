@@ -10,6 +10,7 @@ library(shinyjs)
 library(shinythemes)
 library(shinyWidgets)
 library(shinyPagerUI)
+library(RCurl)
 
 #Page size global
 PAGE_SIZE = 9
@@ -70,9 +71,12 @@ ui <- fluidPage(
   
   titlePanel(title = "Materials Sample Search"), 
   
+  
   #Create each input possibility
   sidebarPanel(
     h3("The Material Record"), 
+    h5("Search the gallery of textiles using any number of inputs found below. 
+       The modifier operator determines if the inputs (excluding the textile name) must all be true or if any one of them can be true."),
     
     #Allows user to select textile name to filter by
     selectInput("textile_name", "Search by textile name", 
@@ -275,6 +279,8 @@ server <- function(input, output, session) {
       glossary_url <- "https://dutchtextiletrade.org/textiles/"
     }
     
+    #Set project query string equal to textile name (ONLY WORKS IN SOME CASES, NAMES IN VALUES APP ARENT THE SAME?)
+    values_link <- paste("https://dutchtextiletradeapps.shinyapps.io/values/?name=", image_selection$textile_name, sep ="")
     
     tagList( 
       tags$p(strong("Textile Name: "), image_selection$textile_name), 
@@ -287,12 +293,12 @@ server <- function(input, output, session) {
       tags$p(strong("Date: "), image_selection$orig_date), 
       tags$p(strong("Additional Info: "), image_selection$addtl_info), 
       tags$p(strong("Collection/image file: "), collection_image_info), 
+      tags$p(strong("Textile ID: "), image_selection$image_filename_app),
       tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
-      #tags$a("comparison_shortcut", href = "#", strong("Comparison Tool")),
       tags$p(actionLink("comparison_tool", strong("Comparison Tool"))),
       tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
       tags$p(),
-      tags$a(href = "https://dutchtextiletrade.org/projects/textiles-modifiers-and-values/", strong("Values App")),
+      tags$a(href = values_link, strong("Values App")),
       tags$p(),
       tags$a(href = glossary_url, strong("Glossary"))
     )  
@@ -533,6 +539,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "process_choice", selected = "All Processes")
     updateSelectInput(session, "weave_choice", selected = "All Weaves")
     updateSelectInput(session, "fiber_choice", selected = "All Fibers")
+    rv$page_number <- 1
   })
   
   
