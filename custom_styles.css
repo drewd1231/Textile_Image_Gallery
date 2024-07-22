@@ -27,7 +27,7 @@
   align-items: start;
 }
 
-.content, .image-container, .comparison-container { 
+.content, .image-container, .comparison-container, .zoomed-container{ 
   flex: 1;
   padding: 10px;
   display: flex;
@@ -41,7 +41,7 @@
   text-align: left;
 }
 
-.image-container img, .comparison-container img { 
+.image-container img, .comparison-container img, .zoomed-container img{ 
   max-width: 100%;
   max-height: 100%;
   margin-left: 10px;
@@ -61,6 +61,12 @@
   width: auto;
 }
 
+.zoomed-container img { 
+  min-height: 300px;
+  width: auto;
+  max-height: 400px;
+}
+
 .image-container .caption, .comparison-container .caption{ 
   display: block;
   margin-top: 10px;
@@ -74,7 +80,7 @@ font-size: 15px;
   font-size: 12px;
 }
 
-.image-container img:hover { 
+.image-container img:hover, .comparison-container img:hover { 
   transform: scale(1.1);
 }
 

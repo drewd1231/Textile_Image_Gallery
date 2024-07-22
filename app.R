@@ -21,7 +21,8 @@ PAGE_SIZE = 9
 setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
 
 #Read in data
-textiles_data <- read_excel("MaterialDataset01302024.xlsx")
+#textiles_data <- read_excel("MaterialDataset01302024.xlsx")
+textiles_data <- read_excel("/Users/drew/Documents/Work/Summer24/textiles_app/MaterialDataset_07-19-24.xlsx")
 
 #Filter out any textiles without images
 textiles_cleaned <- textiles_data %>% 
@@ -145,7 +146,9 @@ server <- function(input, output, session) {
                        page_number = 1, 
                        page_size = PAGE_SIZE, 
                        prev_filtered_rows = nrow(textiles_cleaned), 
-                       comparison_img_url = ""
+                       comparison_selection = NULL, 
+                       dialog_open = FALSE, 
+                       dialog_image = ""
                        )
   
   
@@ -160,7 +163,7 @@ server <- function(input, output, session) {
   
   get_image_details <- function(image_selection) { 
     
-    rv$comparison_img_url <- image_selection$image_filename_app
+    rv$comparison_selection <- image_selection$textile_identifier
     #Various information about source of the textile in one string
     collection_image_info <- paste(image_selection$collection, image_selection$id_no, image_selection$image_filename_orig, sep = ", ")
     
@@ -213,6 +216,119 @@ server <- function(input, output, session) {
   }
   
   
+  #Function to display modalDialog comparison tool with two textiles 
+  showComparison <- function(selected_textile_1, selected_textile_2) {
+    
+    #Retrieve correct rows for first and second textile selections
+    selected_info_1 <- textiles_cleaned %>% 
+      filter(textile_identifier == selected_textile_1)
+    
+    selected_info_2 <- textiles_cleaned %>% 
+      filter(textile_identifier == selected_textile_2)
+    
+    identifier_sorted <- textiles_cleaned$textile_identifier %>% 
+      sort()
+    
+    #Create modalDialog
+    showModal(modalDialog(
+      title = "Textile Comparison", 
+      div(
+        #Creates div for outer container that will contain two containers within (one for each textile)
+        class = "comparison-body", 
+        #Creates div within outer container that will hold input selection, textile imag, and details below
+        div(class = "content",
+            selectInput("textile_id_1", "Select First Textile's ID:", choices = identifier_sorted, selected = selected_textile_1),
+            
+            div(class = "comparison-container", 
+                #Displays image
+                img(src = selected_info_1$image_filename_app, 
+                    class = "zoomed_comparison", 
+                    'data-path' = c(selected_info_1$image_filename_app, selected_info_2$image_filename_app)),
+                
+                #Retrieves details of textile to be displayed below image
+                div(class = "caption", 
+                    get_image_details(selected_info_1)
+                )
+                
+            )
+            
+        ),
+        div(class = "content", 
+            selectInput("textile_id_2", "Select Second Textile's ID:", choices = identifier_sorted, selected = selected_textile_2),
+            
+            div(class = "comparison-container", 
+                img(src = selected_info_2$image_filename_app, 
+                    class = "zoomed_comparison", 
+                    'data-path' = c(selected_info_1$image_filename_app, selected_info_2$image_filename_app)),
+                
+                div(class = "caption", 
+                    get_image_details(selected_info_2)
+                )
+            )
+        )
+      ), 
+      size = 'l'
+    ))
+  }
+  
+  showImageDescription <- function(selected_image) { 
+    selected_url <- selected_image
+    
+    #Retrieve information of image clicked on by user
+    selected_info <- textiles_cleaned %>% 
+      filter(image_filename_app == selected_url)
+    
+    #Print details of image clicked on
+    output$textile_details <- renderUI({ 
+      get_image_details(selected_info)
+    })
+    
+    showModal(modalDialog( 
+      
+      title = "Image Information",
+      div(
+        class = "modal-body", 
+        div(
+          #Displays details about textile on left side of modal dialog
+          class = "content", 
+          uiOutput("textile_details")
+        ), 
+        div(
+          #Creates space for image and caption below image
+          class = "image-container", 
+          img(
+            src = selected_url, 
+            class = "zoomed_image",
+            #Provides javascript with the path to the image in case user wants zoomed version of the image
+            'data-path' = selected_url
+          ),
+          div(class = "caption", strong("Click on image for full size"))
+        ), 
+      ),
+      
+      size = "l", 
+      easyClose = TRUE
+    ))
+  }
+  
+  showZoomedComparison <- function(selected_image_1, selected_image_2) { 
+    #print(selected_image_1)
+    showModal(modalDialog(
+      title = "Image Comparison", 
+      div(
+        class = "modal-body", 
+        div(
+          class = "zoomed-container", 
+          img(src = selected_image_1)
+        ), 
+        div(
+          class = "zoomed-container", 
+          img(src = selected_image_2)
+        )
+      ), 
+      size = "l"
+    ))
+  }
   
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
@@ -459,110 +575,29 @@ server <- function(input, output, session) {
   
   #Check if user has clicked on an image
   observeEvent(input$selected_image, { 
-    selected_url <- input$selected_image
-    
-    #Retrieve information of image clicked on by user
-    selected_info <- textiles_cleaned %>% 
-      filter(image_filename_app == selected_url)
-      
-    #Print details of image clicked on
-    output$textile_details <- renderUI({ 
-      get_image_details(selected_info)
-    })
-    
-    showModal(modalDialog( 
-      
-      title = "Image Information",
-      div(
-        class = "modal-body", 
-        div(
-          #Displays details about textile on left side of modal dialog
-          class = "content", 
-          uiOutput("textile_details")
-        ), 
-        div(
-          #Creates space for image and caption below image
-          class = "image-container", 
-          img(
-            src = selected_url, 
-            class = "zoomed_image",
-            #Provides javascript with the path to the image in case user wants zoomed version of the image
-            'data-path' = selected_url
-          ),
-          div(class = "caption", strong("Click on image for full size"))
-        ), 
-      ),
-      
-      size = "l", 
-      easyClose = TRUE
-    ))
+    showImageDescription(input$selected_image)
   })
   
-  
-  #Function to display modalDialog comparison tool with two textiles 
-  showComparison <- function(selected_textile_1, selected_textile_2) {
-    
-    #Retrieve correct rows for first and second textile selections
-    selected_info_1 <- textiles_cleaned %>% 
-      filter(image_filename_app == selected_textile_1)
-    
-    selected_info_2 <- textiles_cleaned %>% 
-      filter(image_filename_app == selected_textile_2)
-    
-      
-      #Create modalDialog
-      showModal(modalDialog(
-        title = "Textile Comparison", 
-        div(
-          #Creates div for outer container that will contain two containers within (one for each textile)
-          class = "comparison-body", 
-          #Creates div within outer container that will hold input selection, textile imag, and details below
-          div(class = "content",
-              selectInput("textile_id_1", "Select First Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_1),
-
-              div(class = "comparison-container", 
-                  #Displays image
-                  img(src = selected_textile_1),
-                  
-                  #Retrieves details of textile to be displayed below image
-                  div(class = "caption", 
-                      get_image_details(selected_info_1)
-                  )
-                  
-              )
-              
-          ),
-          div(class = "content", 
-              selectInput("textile_id_2", "Select Second Textile's ID:", choices = textiles_cleaned$image_filename_app, selected = selected_textile_2),
-              
-              div(class = "comparison-container", 
-                  img(src = selected_textile_2),
-                  
-                  div(class = "caption", 
-                      get_image_details(selected_info_2)
-                  )
-              )
-          )
-        ), 
-        size = 'l'
-      ))
-  }
-  
+  #Reopens first modaldialog when zoomed image is closed
+  observeEvent(input$reopen_dialog_button, {
+    #print("here")
+    showImageDescription(input$selected_image)
+  })
   
   #Check for user comparison between textiles
   observeEvent(input$comparison_button, {   
-    showComparison("mat_001.jpg", "mat_002.jpg")
+    showComparison("silkstuffs_01", "noDTTPdata_01")
   })
   
   #Checks if user clicked on comparison tool link while viewing a textile description
   observeEvent(input$comparison_tool, { 
     #Calls comparison tool function
-    showComparison(rv$comparison_img_url, "mat_002.jpg")
+    showComparison(rv$comparison_selection, "noDTTPdata_01")
   })
   
   #Checks for new selection of first textile within comparison tool and updates image/details accordingly
   observeEvent(input$textile_id_1,  { 
-    textile_2_url <- "mat_002.jpg"
+    textile_2_url <- "noDTTPdata_01"
     if (!is.null(input$textile_id_2)) { 
       textile_2_url <- input$textile_id_2
     }
@@ -572,7 +607,7 @@ server <- function(input, output, session) {
   
   #Checks for new selection of second textile within comparison tool and updates image/details accordingly
   observeEvent(input$textile_id_2, { 
-    textile_1_url <- "mat_001.jpg"
+    textile_1_url <- "silkstuffs_01"
     if (!is.null(input$textile_id_1)) { 
       textile_1_url <- input$textile_id_1
     }
@@ -580,6 +615,7 @@ server <- function(input, output, session) {
     showComparison(textile_1_url, input$textile_id_2)
   })
 
+  
   #Display zoomed version of image previously clicked
   observeEvent(input$zoomed_image, { 
 
@@ -595,10 +631,67 @@ server <- function(input, output, session) {
         src = selected_url, 
         style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
       ),
-      size = "l"
+      size = "l", 
+      footer = modalButton("Close")
     ))
+    #rv$dialog_open = TRUE
+    rv$dialog_image = selected_url
+    
   })
+  
+  observeEvent(input$zoomed_comparison, { 
+    images <- input$zoomed_comparison %>% 
+      strsplit(" ")
+    images <- images[[1]]
+    
+    image_1 <- images[1]
+    image_2 <- images[2]
+    
+    showZoomedComparison(image_1, image_2)
+  })
+  
+  #observe({ 
+    #if (rv$dialog_open == TRUE) { 
+    #   observeEvent(input$zoomed_image, { 
+    #     
+    #     selected_url <- input$zoomed_image
+    #     
+    #     #Retrieve information of image clicked on by user
+    #     selected_info <- textiles_cleaned %>% 
+    #       filter(image_filename_app == selected_url)
+    #     
+    #     #Show zoomed image by filling new modalDialog pop-up window
+    #     showModal(modalDialog( 
+    #       tags$img(
+    #         src = selected_url, 
+    #         style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
+    #       ),
+    #       size = "l", 
+    #       footer = modalButton("Close")
+    #     ))
+    #     dialog_open = TRUE
+    #   })
+    # #}
+      
+  observeEvent(input$init_modals, { 
+    print("here")
+    session$sendCustomMessage("zoomed_closed", list())  
+  })
+    
+    # else { 
+    #   showImageDescription(rv$dialog_image)
+    # }
+  #})
+  
+  # observe(
+  #   if (is.null(input$zoomed_image)) { 
+  #     rv$dialog_open = FALSE  
+  #   }
+  # )
+  
 }
+
+
 
 
 #Run the app
