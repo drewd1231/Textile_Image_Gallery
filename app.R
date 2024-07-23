@@ -147,8 +147,8 @@ server <- function(input, output, session) {
                        page_size = PAGE_SIZE, 
                        prev_filtered_rows = nrow(textiles_cleaned), 
                        comparison_selection = NULL, 
-                       dialog_open = FALSE, 
-                       dialog_image = ""
+                       zoomed_dialog_open = FALSE,
+                       zoomed_comparison_open = FALSE
                        )
   
   
@@ -313,6 +313,9 @@ server <- function(input, output, session) {
   
   showZoomedComparison <- function(selected_image_1, selected_image_2) { 
     #print(selected_image_1)
+    rv$zoomed_dialog_open = TRUE
+    rv$zoomed_comparison_open = TRUE
+    
     showModal(modalDialog(
       title = "Image Comparison", 
       div(
@@ -580,8 +583,25 @@ server <- function(input, output, session) {
   
   #Reopens first modaldialog when zoomed image is closed
   observeEvent(input$reopen_dialog_button, {
-    #print("here")
-    showImageDescription(input$selected_image)
+    if (rv$zoomed_dialog_open == TRUE) { 
+      if (rv$zoomed_comparison_open == FALSE) { 
+        showImageDescription(input$selected_image)
+      }
+      
+      else { 
+        textile_1_url <- "silkstuffs_01"
+        if (!is.null(input$textile_id_1)) { 
+          textile_1_url <- input$textile_id_1
+        }
+        textile_2_url <- "noDTTPdata_01"
+        if (!is.null(input$textile_id_2)) { 
+          textile_2_url <- input$textile_id_2
+        }
+        showComparison(textile_1_url, textile_2_url)
+      }
+    }
+    rv$zoomed_dialog_open = FALSE
+    rv$zoomed_comparison_open = FALSE
   })
   
   #Check for user comparison between textiles
@@ -618,7 +638,8 @@ server <- function(input, output, session) {
   
   #Display zoomed version of image previously clicked
   observeEvent(input$zoomed_image, { 
-
+    
+    rv$zoomed_dialog_open = TRUE
     selected_url <- input$zoomed_image
     
     #Retrieve information of image clicked on by user
@@ -635,7 +656,7 @@ server <- function(input, output, session) {
       footer = modalButton("Close")
     ))
     #rv$dialog_open = TRUE
-    rv$dialog_image = selected_url
+    #rv$dialog_image = selected_url
     
   })
   
@@ -673,10 +694,10 @@ server <- function(input, output, session) {
     #   })
     # #}
       
-  observeEvent(input$init_modals, { 
-    print("here")
-    session$sendCustomMessage("zoomed_closed", list())  
-  })
+  # observeEvent(input$init_modals, { 
+  #   print("here")
+  #   session$sendCustomMessage("zoomed_closed", list())  
+  # })
     
     # else { 
     #   showImageDescription(rv$dialog_image)

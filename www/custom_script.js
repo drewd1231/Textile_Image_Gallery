@@ -60,18 +60,19 @@ $(document).on("click", ".zoomed_image", function() {
   Shiny.setInputValue("zoomed_image", path_name)
 })
 
-//Shiny.addCustomMessageHandler("zoomed_closed", function(message), { 
-  //$(document).on("hidden.bs.modal", ".modal", function() { 
-    //console.log("here");
-    //if ($("#zoomed_image").length > 0) { 
-    
-      //Shiny.setInputValue("reopen_dialog_button", true, priority{"event"});
-    //}
+$(document).on("hidden.bs.modal", ".modal", function(e) { 
+  console.log("here");
+  //var modal_id = $(e.target).attr('id');
+  //if (modal_id === )
+  var rand_int = Math.random();
+  
+  Shiny.setInputValue("reopen_dialog_button", rand_int);
+});
   //})
 //})
 
 $(document).on("click", ".zoomed_comparison", function() { 
-  console.log("here");
+  //console.log("here");
   var path_name = $(this).data("path");
   //Tell shiny that image has been clicked on and we should now zoom in
   Shiny.setInputValue("zoomed_comparison", path_name)
