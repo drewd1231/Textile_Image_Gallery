@@ -15,8 +15,6 @@ library(RCurl)
 #Page size global
 PAGE_SIZE = 9
 
-#reactlog_enable() 
-
 #Set working directory to correct folder
 setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
 
@@ -110,7 +108,7 @@ ui <- fluidPage(
     selectInput("fiber_choice", "Search by fiber", 
                 choices = c("All Fibers", fiber_list)),
     
-    actionButton("comparison_button", "Compare two textiles by material id number"),
+    actionButton("comparison_button", "Compare two textiles by material id "),
     
     tags$hr(),
     actionButton("reset_button", "Reset all inputs"), 
@@ -133,14 +131,14 @@ ui <- fluidPage(
     #Creates HTML layout for how images are displayed (4 columns, gap in between, etc.)
     includeCSS("custom_styles.css")
   ),
-    
+    #includes javascript file for processing images
     tags$script(src = "custom_script.js") 
 )
 
 #Define Server Logic
 server <- function(input, output, session) { 
   
-  #initialize reactive values that will be passed from observe block to reactive block
+  #initialize reactive values that will be passed from observe blocks to reactive blocks
   rv <- reactiveValues(filter_colors = FALSE, 
                        filtered_color_input = list(), 
                        page_number = 1, 
@@ -161,6 +159,8 @@ server <- function(input, output, session) {
                               message = list(image_urls = image_urls))
   }
   
+  
+  #Function used to retrieve details of textile clicked on by user
   get_image_details <- function(image_selection) { 
     
     rv$comparison_selection <- image_selection$textile_identifier
@@ -190,9 +190,20 @@ server <- function(input, output, session) {
       glossary_url <- "https://dutchtextiletrade.org/textiles/"
     }
     
+    #Get URL of collection or image (depending on which is given)
+    url_substring_exists <- grep("https", image_selection$catalogue_url)
+    
+    if (length(url_substring_exists > 0)) { 
+      catalogue_image_url <- image_selection$catalogue_url
+    }
+    else { 
+      catalogue_image_url <- image_selection$catalogue_url_image  
+    }
+    
     #Set project query string equal to textile name (ONLY WORKS IN SOME CASES, NAMES IN VALUES APP ARENT THE SAME?)
     values_link <- paste("https://dutchtextiletradeapps.shinyapps.io/values/?name=", image_selection$textile_name, sep ="")
     
+    #Organizes textile information into taglist for side of image description
     tagList( 
       tags$p(strong("Textile Name: "), image_selection$textile_name), 
       tags$p(strong("Text from source: "), image_selection$text_source),
@@ -204,7 +215,8 @@ server <- function(input, output, session) {
       tags$p(strong("Date: "), image_selection$orig_date), 
       tags$p(strong("Additional Info: "), image_selection$addtl_info), 
       tags$p(strong("Collection/image file: "), collection_image_info), 
-      tags$p(strong("Textile ID: "), image_selection$image_filename_app),
+      tags$p(strong("Collection/image URL: "), catalogue_image_url),
+      tags$p(strong("Textile ID: "), image_selection$textile_identifier),
       tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
       tags$p(actionLink("comparison_tool", strong("Comparison Tool"))),
       tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
@@ -278,13 +290,12 @@ server <- function(input, output, session) {
     selected_info <- textiles_cleaned %>% 
       filter(image_filename_app == selected_url)
     
-    #Print details of image clicked on
+    #Store details of image clicked on in taglist
     output$textile_details <- renderUI({ 
       get_image_details(selected_info)
     })
     
     showModal(modalDialog( 
-      
       title = "Image Information",
       div(
         class = "modal-body", 
@@ -312,10 +323,11 @@ server <- function(input, output, session) {
   }
   
   showZoomedComparison <- function(selected_image_1, selected_image_2) { 
-    #print(selected_image_1)
+    #Update reactive vals about dialog accordingly
     rv$zoomed_dialog_open = TRUE
     rv$zoomed_comparison_open = TRUE
     
+    #Display modal dialog with zoomed images side by side
     showModal(modalDialog(
       title = "Image Comparison", 
       div(
@@ -583,11 +595,17 @@ server <- function(input, output, session) {
   
   #Reopens first modaldialog when zoomed image is closed
   observeEvent(input$reopen_dialog_button, {
+    
+    #First check is to see if the modal dialog that has been closed is the zoomed version of the image(s)
     if (rv$zoomed_dialog_open == TRUE) { 
+      
+      #Check to see if the zoomed modal that was closed was the comparison images or image descriptor zoomed
       if (rv$zoomed_comparison_open == FALSE) { 
+        session$sendCustomMessage(type = "update_zoomed_input", "")
         showImageDescription(input$selected_image)
       }
       
+      #Modal closed was zoomed comparison tool so retrieve data about textiles and redisplay them
       else { 
         textile_1_url <- "silkstuffs_01"
         if (!is.null(input$textile_id_1)) { 
@@ -597,9 +615,12 @@ server <- function(input, output, session) {
         if (!is.null(input$textile_id_2)) { 
           textile_2_url <- input$textile_id_2
         }
+        session$sendCustomMessage(type = "update_comparison_input", "")
         showComparison(textile_1_url, textile_2_url)
       }
     }
+    
+    #Reset reactive values to FALSE since zoomed dialogs are no longer open
     rv$zoomed_dialog_open = FALSE
     rv$zoomed_comparison_open = FALSE
   })
@@ -638,37 +659,41 @@ server <- function(input, output, session) {
   
   #Display zoomed version of image previously clicked
   observeEvent(input$zoomed_image, { 
-    
-    rv$zoomed_dialog_open = TRUE
     selected_url <- input$zoomed_image
+    if (!is.na(selected_url)) { 
     
-    #Retrieve information of image clicked on by user
-    selected_info <- textiles_cleaned %>% 
-      filter(image_filename_app == selected_url)
-    
-    #Show zoomed image by filling new modalDialog pop-up window
-    showModal(modalDialog( 
-      tags$img(
-        src = selected_url, 
-        style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
-      ),
-      size = "l", 
-      footer = modalButton("Close")
-    ))
-    #rv$dialog_open = TRUE
-    #rv$dialog_image = selected_url
-    
+      rv$zoomed_dialog_open = TRUE
+      
+      #Retrieve information of image clicked on by user
+      selected_info <- textiles_cleaned %>% 
+        filter(image_filename_app == selected_url)
+      
+      #Show zoomed image by filling new modalDialog pop-up window
+      showModal(modalDialog( 
+        tags$img(
+          src = selected_url, 
+          style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
+        ),
+        size = "l", 
+        footer = modalButton("Close")
+      ))
+    }
   })
   
+  #User has clicked on one of images in comparison tool
   observeEvent(input$zoomed_comparison, { 
-    images <- input$zoomed_comparison %>% 
-      strsplit(" ")
-    images <- images[[1]]
     
-    image_1 <- images[1]
-    image_2 <- images[2]
-    
-    showZoomedComparison(image_1, image_2)
+    if (!is.na(input$zoomed_comparison)) { 
+      #Separate image urls and store them in vector
+      images <- input$zoomed_comparison %>% 
+        strsplit(" ")
+      images <- images[[1]]
+      
+      image_1 <- images[1]
+      image_2 <- images[2]
+      
+      showZoomedComparison(image_1, image_2)
+    }
   })
   
   #observe({ 

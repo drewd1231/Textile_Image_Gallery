@@ -55,13 +55,14 @@ function update_images(image_urls) {
 
 //Check for clicks on image when first modal dialog pop-up
 $(document).on("click", ".zoomed_image", function() { 
+  console.log("here");
   var path_name = $(this).data("path");
   //Tell shiny that image has been clicked on and we should now zoom in
   Shiny.setInputValue("zoomed_image", path_name)
 })
 
 $(document).on("hidden.bs.modal", ".modal", function(e) { 
-  console.log("here");
+  //console.log("here");
   //var modal_id = $(e.target).attr('id');
   //if (modal_id === )
   var rand_int = Math.random();
@@ -78,9 +79,13 @@ $(document).on("click", ".zoomed_comparison", function() {
   Shiny.setInputValue("zoomed_comparison", path_name)
 })
 
-//Shiny.onInputChange('init_modals', Math.random());
+Shiny.addCustomMessageHandler("update_zoomed_input", function(message) { 
+  Shiny.setInputValue("zoomed_image", null);
+});
 
-
+Shiny.addCustomMessageHandler("update_comparison_input", function(message) { 
+  Shiny.setInputValue("zoomed_comparison", null);
+});
 
 
 /*$(document).on("shiny:connected", function() { 
