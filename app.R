@@ -12,7 +12,7 @@ library(shinyWidgets)
 library(shinyPagerUI)
 library(RCurl)
 
-source("R/functions.R", local = TRUE)
+source("R/functions.R")
 
 #Page size global
 PAGE_SIZE = 9
@@ -131,7 +131,7 @@ ui <- fluidPage(
   ), 
   tags$head(
     #Creates HTML layout for how images are displayed (4 columns, gap in between, etc.)
-    includeCSS("custom_styles.css")
+    includeCSS("www/custom_styles.css")
   ),
     #includes javascript file for processing images
     tags$script(src = "custom_script.js") 
