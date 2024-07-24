@@ -12,15 +12,17 @@ library(shinyWidgets)
 library(shinyPagerUI)
 library(RCurl)
 
+source("R/functions.R", local = TRUE)
+
 #Page size global
 PAGE_SIZE = 9
 
 #Set working directory to correct folder
-setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
+#setwd("/Users/drew/Documents/Work/Summer24/textiles_app")
 
 #Read in data
 #textiles_data <- read_excel("MaterialDataset01302024.xlsx")
-textiles_data <- read_excel("/Users/drew/Documents/Work/Summer24/textiles_app/MaterialDataset_07-19-24.xlsx")
+textiles_data <- read_excel("MaterialDataset_07-19-24.xlsx")
 
 #Filter out any textiles without images
 textiles_cleaned <- textiles_data %>% 
@@ -41,26 +43,26 @@ names_cleaned <- names_cleaned[order(names_cleaned$textile_name),]
 #     unique()
 
 #Hardcoded list of color options
-color_list <- c("blue", "white", "red", "black", "gold", "natural", "yellow", "green", "purple", "orange", "brown", "pink", "grey") %>% 
+COLOR_LIST <- c("blue", "white", "red", "black", "gold", "natural", "yellow", "green", "purple", "orange", "brown", "pink", "grey") %>% 
   sort()
 
 #Hardcoded list of pattern options
-pattern_list <- c("floral", "geometric", "checkered", "striped", "plain", "figural", "none", "dots", "stars", "foliage") %>% 
+PATTERN_LIST <- c("floral", "geometric", "checkered", "striped", "plain", "figural", "none", "dots", "stars", "foliage") %>% 
   sort()
 
 #Hardcoded list of process options
-process_list <- c("painted", "block printed", "resist-dyed", "piece-dyed", "loom-patterned", "printed", "felted", "embroidered", "ikat", "dyed", "damask") %>% 
+PROCESS_LIST <- c("painted", "block printed", "resist-dyed", "piece-dyed", "loom-patterned", "printed", "felted", "embroidered", "ikat", "dyed", "damask") %>% 
   sort()
 
 #Hardcoded list of weave options
-weave_list <- c("satin", "plainweave", "twill", "damask", "velvet", "complex weave", "plainweave with doubled threads", "plainweave, supplemental weft") %>% 
+WEAVE_LIST <- c("satin", "plainweave", "twill", "damask", "velvet", "complex weave", "plainweave with doubled threads", "plainweave, supplemental weft") %>% 
   sort()
 
 #Hardcoded list of fiber options
-fiber_list <- c("silk", "cotton", "wool", "linen") %>% 
+FIBER_LIST <- c("silk", "cotton", "wool", "linen") %>% 
   sort()
 
-glossary_textiles_list <- c("chintz-kalamkari", "dongris", "gingham", "guinea cloth", "muslin", "nickanees", "perpetuanen", "platillas", "sail cloth", "slaaplakens")
+GLOSSARY_TEXTILES_LIST <- c("chintz-kalamkari", "dongris", "gingham", "guinea cloth", "muslin", "nickanees", "perpetuanen", "platillas", "sail cloth", "slaaplakens")
 
 #Define UI
 ui <- fluidPage( 
@@ -89,24 +91,24 @@ ui <- fluidPage(
                  justified = TRUE),
   
     selectInput("color_choice", "Search by color(s)", 
-                choices = color_list, 
+                choices = COLOR_LIST, 
                 multiple = TRUE),
     
     #Allows user to select pattern to filter by
     selectInput("pattern_choice", "Search by pattern", 
-                choices = c("All Patterns", pattern_list)),
+                choices = c("All Patterns", PATTERN_LIST)),
     
     #Allows user to select process to filter by
     selectInput("process_choice", "Search by process", 
-                choices = c("All Processes", process_list)),
+                choices = c("All Processes", PROCESS_LIST)),
     
     #Allows user to select weave to filter by
     selectInput("weave_choice", "Search by weave", 
-                choices = c("All Weaves", weave_list)),
+                choices = c("All Weaves", WEAVE_LIST)),
     
     #Allows user to select fiber to filter by
     selectInput("fiber_choice", "Search by fiber", 
-                choices = c("All Fibers", fiber_list)),
+                choices = c("All Fibers", FIBER_LIST)),
     
     actionButton("comparison_button", "Compare two textiles by material id "),
     
@@ -148,202 +150,6 @@ server <- function(input, output, session) {
                        zoomed_dialog_open = FALSE,
                        zoomed_comparison_open = FALSE
                        )
-  
-  
-  #Function that sends message to js to update images
-  display_images <- function(url_list) { 
-    image_urls <- as.list(url_list)
-    
-    #Sends message to js to call update_images function
-    session$sendCustomMessage(type = "update_images", 
-                              message = list(image_urls = image_urls))
-  }
-  
-  
-  #Function used to retrieve details of textile clicked on by user
-  get_image_details <- function(image_selection) { 
-    
-    rv$comparison_selection <- image_selection$textile_identifier
-    #Various information about source of the textile in one string
-    collection_image_info <- paste(image_selection$collection, image_selection$id_no, image_selection$image_filename_orig, sep = ", ")
-    
-    #Split the textiles name up into vector if it has multiple names within it
-    find_name <- strsplit(image_selection$textile_name, split = ", ") %>% 
-      unlist() %>% 
-      strsplit(split = "/") %>% 
-      unlist()
-    
-    #Get first name listed if there are multiple names
-    find_name <- find_name[1]
-    
-    #Check if the name found is within the names in the glossary
-    glossary_page <- grep(find_name[1], glossary_textiles_list)
-    
-    #If name is in glossary, record how it is labeled on the website
-    in_glossary <- glossary_textiles_list[glossary_page[1]]
-    
-    #Put together link if glossary page for textile exists
-    if (!is.na(in_glossary)) { 
-      glossary_url <- paste("https://dutchtextiletrade.org/textiles/", in_glossary, "/", sep = "")
-    }
-    else{ 
-      glossary_url <- "https://dutchtextiletrade.org/textiles/"
-    }
-    
-    #Get URL of collection or image (depending on which is given)
-    url_substring_exists <- grep("https", image_selection$catalogue_url)
-    
-    if (length(url_substring_exists > 0)) { 
-      catalogue_image_url <- image_selection$catalogue_url
-    }
-    else { 
-      catalogue_image_url <- image_selection$catalogue_url_image  
-    }
-    
-    #Set project query string equal to textile name (ONLY WORKS IN SOME CASES, NAMES IN VALUES APP ARENT THE SAME?)
-    values_link <- paste("https://dutchtextiletradeapps.shinyapps.io/values/?name=", image_selection$textile_name, sep ="")
-    
-    #Organizes textile information into taglist for side of image description
-    tagList( 
-      tags$p(strong("Textile Name: "), image_selection$textile_name), 
-      tags$p(strong("Text from source: "), image_selection$text_source),
-      tags$p(strong("Color: "), image_selection$textile_color_visual), 
-      tags$p(strong("Fiber: "), image_selection$textile_fiber_visual), 
-      tags$p(strong("Pattern: "), image_selection$textile_pattern_visual),
-      tags$p(strong("Process: "), image_selection$textile_process_visual), 
-      tags$p(strong("Weave: "), image_selection$textile_weave_visual), 
-      tags$p(strong("Date: "), image_selection$orig_date), 
-      tags$p(strong("Additional Info: "), image_selection$addtl_info), 
-      tags$p(strong("Collection/image file: "), collection_image_info), 
-      tags$p(strong("Collection/image URL: "), catalogue_image_url),
-      tags$p(strong("Textile ID: "), image_selection$textile_identifier),
-      tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
-      tags$p(actionLink("comparison_tool", strong("Comparison Tool"))),
-      tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
-      tags$p(),
-      tags$a(href = values_link, strong("Values App")),
-      tags$p(),
-      tags$a(href = glossary_url, strong("Glossary"))
-    )  
-  }
-  
-  
-  #Function to display modalDialog comparison tool with two textiles 
-  showComparison <- function(selected_textile_1, selected_textile_2) {
-    
-    #Retrieve correct rows for first and second textile selections
-    selected_info_1 <- textiles_cleaned %>% 
-      filter(textile_identifier == selected_textile_1)
-    
-    selected_info_2 <- textiles_cleaned %>% 
-      filter(textile_identifier == selected_textile_2)
-    
-    identifier_sorted <- textiles_cleaned$textile_identifier %>% 
-      sort()
-    
-    #Create modalDialog
-    showModal(modalDialog(
-      title = "Textile Comparison", 
-      div(
-        #Creates div for outer container that will contain two containers within (one for each textile)
-        class = "comparison-body", 
-        #Creates div within outer container that will hold input selection, textile imag, and details below
-        div(class = "content",
-            selectInput("textile_id_1", "Select First Textile's ID:", choices = identifier_sorted, selected = selected_textile_1),
-            
-            div(class = "comparison-container", 
-                #Displays image
-                img(src = selected_info_1$image_filename_app, 
-                    class = "zoomed_comparison", 
-                    'data-path' = c(selected_info_1$image_filename_app, selected_info_2$image_filename_app)),
-                
-                #Retrieves details of textile to be displayed below image
-                div(class = "caption", 
-                    get_image_details(selected_info_1)
-                )
-                
-            )
-            
-        ),
-        div(class = "content", 
-            selectInput("textile_id_2", "Select Second Textile's ID:", choices = identifier_sorted, selected = selected_textile_2),
-            
-            div(class = "comparison-container", 
-                img(src = selected_info_2$image_filename_app, 
-                    class = "zoomed_comparison", 
-                    'data-path' = c(selected_info_1$image_filename_app, selected_info_2$image_filename_app)),
-                
-                div(class = "caption", 
-                    get_image_details(selected_info_2)
-                )
-            )
-        )
-      ), 
-      size = 'l'
-    ))
-  }
-  
-  showImageDescription <- function(selected_image) { 
-    selected_url <- selected_image
-    
-    #Retrieve information of image clicked on by user
-    selected_info <- textiles_cleaned %>% 
-      filter(image_filename_app == selected_url)
-    
-    #Store details of image clicked on in taglist
-    output$textile_details <- renderUI({ 
-      get_image_details(selected_info)
-    })
-    
-    showModal(modalDialog( 
-      title = "Image Information",
-      div(
-        class = "modal-body", 
-        div(
-          #Displays details about textile on left side of modal dialog
-          class = "content", 
-          uiOutput("textile_details")
-        ), 
-        div(
-          #Creates space for image and caption below image
-          class = "image-container", 
-          img(
-            src = selected_url, 
-            class = "zoomed_image",
-            #Provides javascript with the path to the image in case user wants zoomed version of the image
-            'data-path' = selected_url
-          ),
-          div(class = "caption", strong("Click on image for full size"))
-        ), 
-      ),
-      
-      size = "l", 
-      easyClose = TRUE
-    ))
-  }
-  
-  showZoomedComparison <- function(selected_image_1, selected_image_2) { 
-    #Update reactive vals about dialog accordingly
-    rv$zoomed_dialog_open = TRUE
-    rv$zoomed_comparison_open = TRUE
-    
-    #Display modal dialog with zoomed images side by side
-    showModal(modalDialog(
-      title = "Image Comparison", 
-      div(
-        class = "modal-body", 
-        div(
-          class = "zoomed-container", 
-          img(src = selected_image_1)
-        ), 
-        div(
-          class = "zoomed-container", 
-          img(src = selected_image_2)
-        )
-      ), 
-      size = "l"
-    ))
-  }
   
   #Reactive function we want to call when user selects "AND"
   filtered_and <- reactive({ 
@@ -468,7 +274,7 @@ server <- function(input, output, session) {
   #Display images initially before any inputs are selected
   session$onFlushed(function() {
     image_urls <- textiles_cleaned$image_filename_app
-    display_images(image_urls[1:PAGE_SIZE])
+    display_images(session, image_urls[1:PAGE_SIZE])
   })
 
   
@@ -524,7 +330,7 @@ server <- function(input, output, session) {
     #up the page or the last photo of the gallery
     end <- min(rv$page_number * rv$page_size, nrow(filtered_data))
     
-    display_images(filtered_data$image_filename_app[start:end])
+    display_images(session, filtered_data$image_filename_app[start:end])
   })
   
   
@@ -590,7 +396,7 @@ server <- function(input, output, session) {
   
   #Check if user has clicked on an image
   observeEvent(input$selected_image, { 
-    showImageDescription(input$selected_image)
+    showImageDescription(input$selected_image, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
   })
   
   #Reopens first modaldialog when zoomed image is closed
@@ -602,7 +408,7 @@ server <- function(input, output, session) {
       #Check to see if the zoomed modal that was closed was the comparison images or image descriptor zoomed
       if (rv$zoomed_comparison_open == FALSE) { 
         session$sendCustomMessage(type = "update_zoomed_input", "")
-        showImageDescription(input$selected_image)
+        showImageDescription(input$selected_image, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
       }
       
       #Modal closed was zoomed comparison tool so retrieve data about textiles and redisplay them
@@ -616,7 +422,7 @@ server <- function(input, output, session) {
           textile_2_url <- input$textile_id_2
         }
         session$sendCustomMessage(type = "update_comparison_input", "")
-        showComparison(textile_1_url, textile_2_url)
+        showComparison(textile_1_url, textile_2_url, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv)
       }
     }
     
@@ -627,13 +433,13 @@ server <- function(input, output, session) {
   
   #Check for user comparison between textiles
   observeEvent(input$comparison_button, {   
-    showComparison("silkstuffs_01", "noDTTPdata_01")
+    showComparison("silkstuffs_01", "noDTTPdata_01", textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv)
   })
   
   #Checks if user clicked on comparison tool link while viewing a textile description
   observeEvent(input$comparison_tool, { 
     #Calls comparison tool function
-    showComparison(rv$comparison_selection, "noDTTPdata_01")
+    showComparison(rv$comparison_selection, "noDTTPdata_01", textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv)
   })
   
   #Checks for new selection of first textile within comparison tool and updates image/details accordingly
@@ -643,7 +449,7 @@ server <- function(input, output, session) {
       textile_2_url <- input$textile_id_2
     }
     removeModal()
-    showComparison(input$textile_id_1, textile_2_url)
+    showComparison(input$textile_id_1, textile_2_url, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv)
   })
   
   #Checks for new selection of second textile within comparison tool and updates image/details accordingly
@@ -653,7 +459,7 @@ server <- function(input, output, session) {
       textile_1_url <- input$textile_id_1
     }
     removeModal()
-    showComparison(textile_1_url, input$textile_id_2)
+    showComparison(textile_1_url, input$textile_id_2, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv)
   })
 
   
@@ -692,7 +498,7 @@ server <- function(input, output, session) {
       image_1 <- images[1]
       image_2 <- images[2]
       
-      showZoomedComparison(image_1, image_2)
+      showZoomedComparison(image_1, image_2, rv)
     }
   })
   
