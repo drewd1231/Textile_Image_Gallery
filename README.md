@@ -22,3 +22,7 @@ HOW TO USE THE APPLICATION:
 This Shiny App allows users to describe the textile(s) they are interested in looking for in a number of ways: textile name, color (user can choose any number of colors), pattern, process, weave, and fiber. Users can choose any option from each drop-down menu or begin to type the option they want then select any one that matches. 
 
 The modifier operator (options being AND/OR) is an important distinguisher for users to decide what their search will look like. If the user selects the 'AND' operator, only images whose attributes match every one of the selections will be shown. On the other hand, when the 'OR' operator is selected, each image shown matches at least one of the inputs selected by the user. The exception to this rule is if the user has selected a textile name; in this case, the textiles shown will always match the textile name provided. 
+
+CREDITS
+
+Thank you to Carrie Anderson and Marsely Kehoe for their contributions during this process!
