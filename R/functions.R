@@ -71,11 +71,11 @@ get_image_details <- function(image_selection, GLOSSARY_TEXTILES_LIST, rv) {
     tags$p(strong("Textile ID: "), image_selection$textile_identifier),
     tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
     tags$p(actionLink("comparison_tool", strong("Comparison Tool"))),
-    tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")),
+    tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App"), target = "_blank"),
     tags$p(),
-    tags$a(href = values_link, strong("Values App")),
+    tags$a(href = values_link, strong("Values App"), target = "_blank"),
     tags$p(),
-    tags$a(href = glossary_url, strong("Glossary"))
+    tags$a(href = glossary_url, strong("Glossary"), target = "_blank")
   )  
 }
 
