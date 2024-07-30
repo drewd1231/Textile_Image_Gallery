@@ -2,17 +2,15 @@ library(shiny)
 library(bslib)
 library(readxl)
 library(dplyr)
-library(jpeg)
 library(grid)
 library(gridExtra)
 library(ggtern)
 library(shinyjs)
 library(shinythemes)
 library(shinyWidgets)
-library(shinyPagerUI)
-library(RCurl)
 
-source("R/functions.R")
+
+source("functions.R")
 
 #Page size global
 PAGE_SIZE = 9
@@ -134,11 +132,17 @@ ui <- fluidPage(
     includeCSS("www/custom_styles.css")
   ),
     #includes javascript file for processing images
-    tags$script(src = "custom_script.js") 
+  tags$script(src = "custom_script.js")   
 )
 
 #Define Server Logic
 server <- function(input, output, session) { 
+  
+  options(shiny.error = function() {
+    err <- geterrmessage()
+    cat("ERROR: ", err, "\n")
+    stop(err)
+  })
   
   #initialize reactive values that will be passed from observe blocks to reactive blocks
   rv <- reactiveValues(filter_colors = FALSE, 
@@ -148,7 +152,8 @@ server <- function(input, output, session) {
                        prev_filtered_rows = nrow(textiles_cleaned), 
                        comparison_selection = NULL, 
                        zoomed_dialog_open = FALSE,
-                       zoomed_comparison_open = FALSE
+                       zoomed_comparison_open = FALSE, 
+                       image_index = 1
                        )
   
   #Reactive function we want to call when user selects "AND"
@@ -375,6 +380,13 @@ server <- function(input, output, session) {
     }
   })
   
+  observeEvent (input$previous_image, { 
+    
+    
+    
+  })
+  
+  
   #Check for reset button click
   observeEvent (input$reset_button, { 
     updateSelectInput(session, "textile_name", selected = "All Names")
@@ -396,6 +408,23 @@ server <- function(input, output, session) {
   
   #Check if user has clicked on an image
   observeEvent(input$selected_image, { 
+    
+    #Update reactive value of index in df of selected image
+    if (input$and_or == "AND") { 
+      filtered_data <- filtered_and()
+    }
+    else { 
+      filtered_data <- filtered_or()
+    }
+    
+    selected_info <- textiles_cleaned %>% 
+      filter(image_filename_app == input$selected_image)
+    
+    selected_identifier <- selected_info$textile_identifier
+    print(selected_identifier)
+    rv$image_index <- which(filtered_data$textile_identifier == selected_identifier)
+    
+    #Call function to show modal dialog with information and image
     showImageDescription(input$selected_image, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
   })
   
@@ -476,9 +505,10 @@ server <- function(input, output, session) {
       
       #Show zoomed image by filling new modalDialog pop-up window
       showModal(modalDialog( 
+        class = "zoomed-description",
         tags$img(
-          src = selected_url, 
-          style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
+          src = selected_url
+          #style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
         ),
         size = "l", 
         footer = modalButton("Close")
@@ -501,46 +531,6 @@ server <- function(input, output, session) {
       showZoomedComparison(image_1, image_2, rv)
     }
   })
-  
-  #observe({ 
-    #if (rv$dialog_open == TRUE) { 
-    #   observeEvent(input$zoomed_image, { 
-    #     
-    #     selected_url <- input$zoomed_image
-    #     
-    #     #Retrieve information of image clicked on by user
-    #     selected_info <- textiles_cleaned %>% 
-    #       filter(image_filename_app == selected_url)
-    #     
-    #     #Show zoomed image by filling new modalDialog pop-up window
-    #     showModal(modalDialog( 
-    #       tags$img(
-    #         src = selected_url, 
-    #         style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
-    #       ),
-    #       size = "l", 
-    #       footer = modalButton("Close")
-    #     ))
-    #     dialog_open = TRUE
-    #   })
-    # #}
-      
-  # observeEvent(input$init_modals, { 
-  #   print("here")
-  #   session$sendCustomMessage("zoomed_closed", list())  
-  # })
-    
-    # else { 
-    #   showImageDescription(rv$dialog_image)
-    # }
-  #})
-  
-  # observe(
-  #   if (is.null(input$zoomed_image)) { 
-  #     rv$dialog_open = FALSE  
-  #   }
-  # )
-  
 }
 
 

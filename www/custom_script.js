@@ -88,11 +88,49 @@ Shiny.addCustomMessageHandler("update_comparison_input", function(message) {
 });
 
 
-/*$(document).on("shiny:connected", function() { 
-  $("comparison_shortcut").on("click", function() { 
-    Shiny.setInputValue("comp_button_clicked", )
-  })
-}
+//TESTING
+/*
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("one");
+    $(document).on("mouseover", ".zoomed-description", function(e) { 
+      const zoomedImage = document.querySelector('.zoomed-description');
+      //const img = zoomedImage.querySelector('img');
+      
+      const img = zoomedImage.querySelector('img');
+      const magnifier = document.createElement('div');
+      magnifier.classList.add('magnifier');
+      const magnifier_img = document.createElement('img');
+      magnifier_img.src = img.src;
+      magnifier.appendChild(magnifier_img);
+      zoomedImage.appendChild(magnifier);
+  
+      zoomedImage.addEventListener('mousemove', function(e) {
+        magnifier.style.display = 'block';
+        const rect = zoomedImage.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const magnifierX = x - magnifier.offsetWidth / 2;
+        const magnifierY = y - magnifier.offsetHeight / 2;
+
+        magnifier.style.left = `${magnifierX}px`;
+        magnifier.style.top = `${magnifierY}px`;
+
+        const imgX = -((x / rect.width) * img.width - magnifier.offsetWidth / 2);
+        const imgY = -((y / rect.height) * img.height - magnifier.offsetHeight / 2);
+
+        magnifier_img.style.left = `${imgX}px`;
+        magnifier_img.style.top = `${imgY}px`;
+      });
+  
+      zoomedImage.addEventListener('mouseleave', function() {
+          magnifier.style.display = "none";
+    });
+  });
+});
+
+
+
+
+
 */
-
-
