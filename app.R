@@ -108,6 +108,7 @@ ui <- fluidPage(
     selectInput("fiber_choice", "Search by fiber", 
                 choices = c("All Fibers", FIBER_LIST)),
     
+    #Activates comparison tool
     actionButton("comparison_button", "Compare two textiles by material id "),
     
     tags$hr(),
@@ -118,14 +119,17 @@ ui <- fluidPage(
   ), 
   
   mainPanel(
+    #Creates ui shell for image gallery
     uiOutput("images"), 
-    # uiOutput("no_images"),
+    
+    #Creates buttons for users to change pages
     actionButton("prev_page", "Previous", 
                  style = "margin-top: 10px; margin-bottom: 5px;"),
     actionButton("next_page", "Next", 
                  style = "margin-top: 10px; margin-bottom: 5px;"), 
+    
+    #Displays what page user is on and how many pages there are total for input
     textOutput("page_details") 
-    #textOutput("no_results", )
   ), 
   tags$head(
     #Creates HTML layout for how images are displayed (4 columns, gap in between, etc.)
@@ -153,7 +157,8 @@ server <- function(input, output, session) {
                        comparison_selection = NULL, 
                        zoomed_dialog_open = FALSE,
                        zoomed_comparison_open = FALSE, 
-                       image_index = 1
+                       image_index = 1, 
+                       filtered_data = textiles_cleaned
                        )
   
   #Reactive function we want to call when user selects "AND"
@@ -303,54 +308,39 @@ server <- function(input, output, session) {
   observe ({ 
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
-      filtered_data <- filtered_and()
+      rv$filtered_data <- filtered_and()
     }  
     #If user wants modifiers to be "Or-ed" together, call respective reactive function
     else { 
-      filtered_data <- filtered_or()  
+      rv$filtered_data <- filtered_or()  
     }
     
     #If an input was changed so that a new set of images is being shown, return user to first page
-    if (rv$prev_filtered_rows != nrow(filtered_data)) {
+    if (rv$prev_filtered_rows != nrow(rv$filtered_data)) {
       rv$page_number <- 1  
-      rv$prev_filtered_rows <- nrow(filtered_data)
+      rv$prev_filtered_rows <- nrow(rv$filtered_data)
     }
   })
     
   #Third observe displays the contents of the current page if inputs are changed or if page number is changed
   observe ({
-    #If user wants modifiers to be "And-ed" together, call respective reactive function
-    if (input$and_or == "AND") { 
-      filtered_data <- filtered_and()
-    }  
-    #If user wants modifiers to be "Or-ed" together, call respective reactive function
-    else { 
-      filtered_data <- filtered_or()  
-    }
     
     #Display number of images for given page
     start <- ((rv$page_number - 1) * rv$page_size) + 1
     
     #End of page index will either be the position of the last photo that fills 
     #up the page or the last photo of the gallery
-    end <- min(rv$page_number * rv$page_size, nrow(filtered_data))
+    end <- min(rv$page_number * rv$page_size, nrow(rv$filtered_data))
     
-    display_images(session, filtered_data$image_filename_app[start:end])
+    display_images(session, rv$filtered_data$image_filename_app[start:end])
   })
   
   
   #Produce text for page information
   output$page_details <- renderText({ 
-    #If user wants modifiers to be "And-ed" together, call respective reactive function
-    if (input$and_or == "AND") { 
-      filtered_data <- filtered_and()
-    }  
-    #If user wants modifiers to be "Or-ed" together, call respective reactive function
-    else { 
-      filtered_data <- filtered_or()  
-    }
     
-    pages_needed <- ceiling(nrow(filtered_data) / rv$page_size)
+    #Calculate how many pages are needed to show number of images for given inputs
+    pages_needed <- ceiling(nrow(rv$filtered_data) / rv$page_size)
     
     #Display what number page user is on out of the total number of pages
     paste("Page ", rv$page_number, " of ", pages_needed)
@@ -367,27 +357,49 @@ server <- function(input, output, session) {
   
   #Check for next page call and increment page number if there is a next page
   observeEvent (input$next_page, { 
-    if (input$and_or == "AND") { 
-      filtered_data <- filtered_and()
-    }
-    else { 
-      filtered_data <- filtered_or()
-    }
-    
     #Have not reached end of images yet so page can be incremented
-    if (rv$page_number * rv$page_size < nrow(filtered_data)) { 
+    if (rv$page_number * rv$page_size < nrow(rv$filtered_data)) { 
       rv$page_number <- rv$page_number + 1  
     }
   })
   
+  #User has clicked on previous button within modal dialog
   observeEvent (input$previous_image, { 
+    if (rv$image_index > 1) { 
+      rv$image_index <- rv$image_index - 1
+    }
+
+    #Check if current selected textile is at beginning of page, then page needs to be changed
+    if ((rv$image_index != 1) & (((rv$image_index) %% 9) == 0)) { 
+      rv$page_number <- rv$page_number - 1
+    }
     
+    #Get new selection using decremented index and call function to display description
+    new_selection <- rv$filtered_data[rv$image_index,]
+    showImageDescription(new_selection$image_filename_app, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
+  })
+  
+  #User has clicked on next button within modal dialog
+  observeEvent (input$next_image, { 
+    n <- nrow(rv$filtered_data)
     
+    #Check that image selected is not the last of the textiles being shown
+    if (rv$image_index < n) { 
+      rv$image_index <- rv$image_index + 1
+    }
+
+    #Check if current selected textile is at beginning of page, then page needs to be changed
+    if ((rv$image_index != n) & (((rv$image_index-1) %% 9) == 0)) { 
+        rv$page_number <- rv$page_number + 1
+    }
     
+    #Get new selection using incremented index and call function to display description
+    new_selection <- rv$filtered_data[rv$image_index,]
+    showImageDescription(new_selection$image_filename_app, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
   })
   
   
-  #Check for reset button click
+  #Check for reset button click - reset all inputs if so
   observeEvent (input$reset_button, { 
     updateSelectInput(session, "textile_name", selected = "All Names")
     updateRadioGroupButtons(session, "and_or", selected = "AND")
@@ -409,20 +421,12 @@ server <- function(input, output, session) {
   #Check if user has clicked on an image
   observeEvent(input$selected_image, { 
     
-    #Update reactive value of index in df of selected image
-    if (input$and_or == "AND") { 
-      filtered_data <- filtered_and()
-    }
-    else { 
-      filtered_data <- filtered_or()
-    }
-    
     selected_info <- textiles_cleaned %>% 
       filter(image_filename_app == input$selected_image)
     
+    #Update index of image we have selected
     selected_identifier <- selected_info$textile_identifier
-    print(selected_identifier)
-    rv$image_index <- which(filtered_data$textile_identifier == selected_identifier)
+    rv$image_index <- which(rv$filtered_data$textile_identifier == selected_identifier)
     
     #Call function to show modal dialog with information and image
     showImageDescription(input$selected_image, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
@@ -436,8 +440,12 @@ server <- function(input, output, session) {
       
       #Check to see if the zoomed modal that was closed was the comparison images or image descriptor zoomed
       if (rv$zoomed_comparison_open == FALSE) { 
+        #Let js know that zoomed window has been closed
         session$sendCustomMessage(type = "update_zoomed_input", "")
-        showImageDescription(input$selected_image, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
+        
+        #Show image description modal dialog
+        new_selection <- rv$filtered_data[rv$image_index,]
+        showImageDescription(new_selection$image_filename_app, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
       }
       
       #Modal closed was zoomed comparison tool so retrieve data about textiles and redisplay them
@@ -450,6 +458,8 @@ server <- function(input, output, session) {
         if (!is.null(input$textile_id_2)) { 
           textile_2_url <- input$textile_id_2
         }
+        
+        #Lets js know that the zoomed comparison of the images is open
         session$sendCustomMessage(type = "update_comparison_input", "")
         showComparison(textile_1_url, textile_2_url, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv)
       }
@@ -474,6 +484,8 @@ server <- function(input, output, session) {
   #Checks for new selection of first textile within comparison tool and updates image/details accordingly
   observeEvent(input$textile_id_1,  { 
     textile_2_url <- "noDTTPdata_01"
+    
+    #Checks if selection has already been made for textile two
     if (!is.null(input$textile_id_2)) { 
       textile_2_url <- input$textile_id_2
     }
@@ -484,6 +496,8 @@ server <- function(input, output, session) {
   #Checks for new selection of second textile within comparison tool and updates image/details accordingly
   observeEvent(input$textile_id_2, { 
     textile_1_url <- "silkstuffs_01"
+    
+    #Checks if selection has already been made for textile one
     if (!is.null(input$textile_id_1)) { 
       textile_1_url <- input$textile_id_1
     }
@@ -495,6 +509,7 @@ server <- function(input, output, session) {
   #Display zoomed version of image previously clicked
   observeEvent(input$zoomed_image, { 
     selected_url <- input$zoomed_image
+    #Make sure input exists
     if (!is.na(selected_url)) { 
     
       rv$zoomed_dialog_open = TRUE

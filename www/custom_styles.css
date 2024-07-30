@@ -120,31 +120,6 @@ font-size: 15px;
 }
 
 
-//ADDED THIS
-.magnifier {
-    position: absolute;
-    border: 3px solid #000;
-    border-radius: 50%;
-    cursor: none;
-    width: 100px; /* Adjust the magnifier size as needed */
-    height: 100px; /* Adjust the magnifier size as needed */
-    overflow: hidden;
-    pointer-events: none;
-    display: none; /* Initially hidden */
-}
-
-.magnifier img {
-    position: absolute;
-    width: 200%; /* Adjust the zoom level as needed */
-    height: 200%; /* Adjust the zoom level as needed */
-}
-
-//.comparison-container .caption { 
-  //display: block;
-  //margin-top: 10px;
-  //font-size: 12px;
-//}
-
 .modal-dialog { 
   max-width: 100%;
   height: 80%;

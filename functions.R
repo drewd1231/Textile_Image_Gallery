@@ -116,10 +116,12 @@ showImageDescription <- function(selected_image, textiles_cleaned, GLOSSARY_TEXT
     ),
     
     size = "l", 
+    #Organize footer of modal dialog using CSS classes created 
     footer = tagList(
       div(class = "modal-left", 
           actionButton("previous_image", "Previous"),
           actionButton("next_image", "Next")),
+      
       div(class = "modal-right", 
           modalButton("Close"))),
     easyClose = TRUE

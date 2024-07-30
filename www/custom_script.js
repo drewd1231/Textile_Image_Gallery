@@ -1,8 +1,10 @@
+//Checks for shiny code looking to update image gallery
 Shiny.addCustomMessageHandler("update_images", function(message) { 
   update_images(message.image_urls);  
 });
 
 
+//Function that updates image gallery
 function update_images(image_urls) { 
 
   //Error Checks that image paths passed are in an array
@@ -16,7 +18,6 @@ function update_images(image_urls) {
   
   //Check if there are no images matching input
   if (image_urls[0] === null) {
-    console.log("here");
     var noImagesMessage = $("<h3>").text("No images match your criteria");
   
     //Add text to image_gallery object to tell user that search is invalid
@@ -28,11 +29,8 @@ function update_images(image_urls) {
   //Loops through all urls passed by reactive R input
   image_urls.forEach(function(url) { 
   
-  var temp_image = new Image();
-  temp_image.src = url;
-  
-  //temp_image.onload = function() { 
-  
+  /*var temp_image = new Image();
+  temp_image.src = url;*/
   
   //Creates image object for each url and checks for click event
   var img = $("<img>").attr("src", url).addClass("gallery-image").click(function() { 
@@ -42,14 +40,8 @@ function update_images(image_urls) {
   //Changes users cursor when hovering above an image
   img.css("cursor", "pointer");
   
-  //if (this.naturalHeight > this.naturalWidth) { 
-  // img.css("transform", "rotate(90deg)");
-  //$(this).addClass("rotated");
-  //}
-  
   //Appends each image object to the "image_gallery"
   $("#image_gallery").append(img);
-  //};
   });
 }
 
@@ -61,76 +53,29 @@ $(document).on("click", ".zoomed_image", function() {
   Shiny.setInputValue("zoomed_image", path_name)
 })
 
+//Checks for when modal dialogs are closed
 $(document).on("hidden.bs.modal", ".modal", function(e) { 
-  //console.log("here");
-  //var modal_id = $(e.target).attr('id');
-  //if (modal_id === )
+  //Sets variable to random int so that shiny sees new input
   var rand_int = Math.random();
   
+  //Passes value to shiny resetting input
   Shiny.setInputValue("reopen_dialog_button", rand_int);
 });
-  //})
-//})
 
+//Checks for user click on one of images shown in comparison tool
 $(document).on("click", ".zoomed_comparison", function() { 
-  //console.log("here");
+  //Stores textile info with data path
   var path_name = $(this).data("path");
   //Tell shiny that image has been clicked on and we should now zoom in
   Shiny.setInputValue("zoomed_comparison", path_name)
 })
 
+//Sets shiny value to null when zoomed dialog is closed
 Shiny.addCustomMessageHandler("update_zoomed_input", function(message) { 
   Shiny.setInputValue("zoomed_image", null);
 });
 
+//Sets shiny value to null when comparison zoomed dialog is closed
 Shiny.addCustomMessageHandler("update_comparison_input", function(message) { 
   Shiny.setInputValue("zoomed_comparison", null);
 });
-
-
-//TESTING
-/*
-document.addEventListener("DOMContentLoaded", function() {
-    console.log("one");
-    $(document).on("mouseover", ".zoomed-description", function(e) { 
-      const zoomedImage = document.querySelector('.zoomed-description');
-      //const img = zoomedImage.querySelector('img');
-      
-      const img = zoomedImage.querySelector('img');
-      const magnifier = document.createElement('div');
-      magnifier.classList.add('magnifier');
-      const magnifier_img = document.createElement('img');
-      magnifier_img.src = img.src;
-      magnifier.appendChild(magnifier_img);
-      zoomedImage.appendChild(magnifier);
-  
-      zoomedImage.addEventListener('mousemove', function(e) {
-        magnifier.style.display = 'block';
-        const rect = zoomedImage.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        const magnifierX = x - magnifier.offsetWidth / 2;
-        const magnifierY = y - magnifier.offsetHeight / 2;
-
-        magnifier.style.left = `${magnifierX}px`;
-        magnifier.style.top = `${magnifierY}px`;
-
-        const imgX = -((x / rect.width) * img.width - magnifier.offsetWidth / 2);
-        const imgY = -((y / rect.height) * img.height - magnifier.offsetHeight / 2);
-
-        magnifier_img.style.left = `${imgX}px`;
-        magnifier_img.style.top = `${imgY}px`;
-      });
-  
-      zoomedImage.addEventListener('mouseleave', function() {
-          magnifier.style.display = "none";
-    });
-  });
-});
-
-
-
-
-
-*/
