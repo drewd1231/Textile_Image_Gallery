@@ -45,9 +45,66 @@ function update_images(image_urls) {
   });
 }
 
+$(document).on("keydown", ".backspace_name", function(e) { 
+  if (e.key === "Backspace") { 
+    var select_input = $(this);
+    
+    if (select_input.val() === "") { 
+      var rand_int = Math.random();
+      Shiny.setInputValue("name_backspace", rand_int);
+    }
+  }
+})
+
+$(document).on("keydown", ".backspace_pattern", function(e) { 
+  if (e.key === "Backspace") { 
+    var select_input = $(this);
+    
+    if (select_input.val() === "") { 
+      var rand_int = Math.random();
+      Shiny.setInputValue("pattern_backspace", rand_int);
+    }
+  }
+})
+
+$(document).on("keydown", ".backspace_process", function(e) { 
+  if (e.key === "Backspace") { 
+    var select_input = $(this);
+    
+    if (select_input.val() === "") { 
+      var rand_int = Math.random();
+      Shiny.setInputValue("process_backspace", rand_int);
+    }
+  }
+})
+
+$(document).on("keydown", ".backspace_weave", function(e) { 
+  if (e.key === "Backspace") { 
+    var select_input = $(this);
+    
+    if (select_input.val() === "") { 
+      var rand_int = Math.random();
+      Shiny.setInputValue("weave_backspace", rand_int);
+    }
+  }
+})
+
+$(document).on("keydown", ".backspace_fiber", function(e) { 
+  if (e.key === "Backspace") { 
+    var select_input = $(this);
+    
+    if (select_input.val() === "") { 
+      var rand_int = Math.random();
+      Shiny.setInputValue("fiber_backspace", rand_int);
+    }
+  }
+})
+
+
+
 //Check for clicks on image when first modal dialog pop-up
 $(document).on("click", ".zoomed_image", function() { 
-  console.log("here");
+  //console.log("here");
   var path_name = $(this).data("path");
   //Tell shiny that image has been clicked on and we should now zoom in
   Shiny.setInputValue("zoomed_image", path_name)
@@ -79,3 +136,5 @@ Shiny.addCustomMessageHandler("update_zoomed_input", function(message) {
 Shiny.addCustomMessageHandler("update_comparison_input", function(message) { 
   Shiny.setInputValue("zoomed_comparison", null);
 });
+
+

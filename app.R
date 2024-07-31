@@ -40,6 +40,8 @@ names_cleaned <- names_cleaned[order(names_cleaned$textile_name),]
 #    unlist() %>% 
 #     unique()
 
+NAME_LIST <- names_cleaned$textile_name
+
 #Hardcoded list of color options
 COLOR_LIST <- c("blue", "white", "red", "black", "gold", "natural", "yellow", "green", "purple", "orange", "brown", "pink", "grey") %>% 
   sort()
@@ -78,9 +80,11 @@ ui <- fluidPage(
        The modifier operator determines if the inputs (excluding the textile name) must all be true or if any one of them can be true."),
     
     #Allows user to select textile name to filter by
-    selectInput("textile_name", "Search by textile name", 
-                choices = c("All Names", names_cleaned$textile_name), 
-                selected = "All Names"), 
+    tags$div(class = "backspace_name",
+      selectInput("textile_name", "Search by textile name", 
+                  choices = c("All Names", NAME_LIST), 
+                  selected = "All Names")
+    ), 
     
     #Allows user to filter images by name AND other modifiers or not
     radioGroupButtons("and_or", "Select Modifier Operator",
@@ -92,21 +96,29 @@ ui <- fluidPage(
                 choices = COLOR_LIST, 
                 multiple = TRUE),
     
-    #Allows user to select pattern to filter by
-    selectInput("pattern_choice", "Search by pattern", 
-                choices = c("All Patterns", PATTERN_LIST)),
+    tags$div(class = "backspace_pattern",
+      #Allows user to select pattern to filter by
+      selectInput("pattern_choice", "Search by pattern", 
+                  choices = c("All Patterns", PATTERN_LIST))
+    ),
     
-    #Allows user to select process to filter by
-    selectInput("process_choice", "Search by process", 
-                choices = c("All Processes", PROCESS_LIST)),
+    tags$div(class = "backspace_process",
+      #Allows user to select process to filter by
+      selectInput("process_choice", "Search by process", 
+                  choices = c("All Processes", PROCESS_LIST))
+    ),
     
-    #Allows user to select weave to filter by
-    selectInput("weave_choice", "Search by weave", 
-                choices = c("All Weaves", WEAVE_LIST)),
+    tags$div(class = "backspace_weave",
+      #Allows user to select weave to filter by
+      selectInput("weave_choice", "Search by weave", 
+                  choices = c("All Weaves", WEAVE_LIST))
+    ),
     
-    #Allows user to select fiber to filter by
-    selectInput("fiber_choice", "Search by fiber", 
-                choices = c("All Fibers", FIBER_LIST)),
+    tags$div(class = "backspace_fiber",
+      #Allows user to select fiber to filter by
+      selectInput("fiber_choice", "Search by fiber", 
+                  choices = c("All Fibers", FIBER_LIST))
+    ),
     
     #Activates comparison tool
     actionButton("comparison_button", "Compare two textiles by material id "),
@@ -306,6 +318,7 @@ server <- function(input, output, session) {
   
   #Second observe sets the page number back to 1 if image gallery has changed
   observe ({ 
+    #print(input$textile_name)
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
       rv$filtered_data <- filtered_and()
@@ -397,6 +410,28 @@ server <- function(input, output, session) {
     new_selection <- rv$filtered_data[rv$image_index,]
     showImageDescription(new_selection$image_filename_app, textiles_cleaned, GLOSSARY_TEXTILES_LIST, rv, output)
   })
+  
+  observeEvent (input$name_backspace, { 
+    updateSelectInput(session, "textile_name", choices = c("All Names", NAME_LIST), selected = "All Names")  
+  })
+  
+  observeEvent (input$pattern_backspace, { 
+    updateSelectInput(session, "pattern_choice", choices = c("All Patterns", PATTERN_LIST), selected = "All Patterns")  
+  })
+  
+  observeEvent (input$process_backspace, { 
+    updateSelectInput(session, "process_choice", choices = c("All Processes", PROCESS_LIST), selected = "All Processes")  
+  })
+  
+  observeEvent (input$weave_backspace, { 
+    updateSelectInput(session, "weave_choice", choices = c("All Weaves", WEAVE_LIST), selected = "All Weaves")  
+  })
+  
+  observeEvent (input$fiber_backspace, { 
+    updateSelectInput(session, "fiber_choice", choices = c("All Fibers", FIBER_LIST), selected = "All Fibers")  
+  })
+  
+  
   
   
   #Check for reset button click - reset all inputs if so

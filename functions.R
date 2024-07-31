@@ -68,7 +68,6 @@ get_image_details <- function(image_selection, GLOSSARY_TEXTILES_LIST, rv) {
     tags$p(strong("Additional Info: "), image_selection$addtl_info), 
     tags$p(strong("Collection/image file: "), collection_image_info), 
     tags$p(strong("Collection/image URL: "), catalogue_image_url),
-    tags$p(strong("Textile ID: "), image_selection$textile_identifier),
     tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
     tags$p(actionLink("comparison_tool", strong("Comparison Tool"))),
     tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")), #, target = "_blank"),
