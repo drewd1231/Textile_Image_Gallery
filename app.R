@@ -8,6 +8,7 @@ library(ggtern)
 library(shinyjs)
 library(shinythemes)
 library(shinyWidgets)
+library(shinyBS)
 
 
 source("functions.R")
@@ -79,18 +80,18 @@ ui <- fluidPage(
     h5("Search the gallery of textiles using any number of inputs found below. 
        The modifier operator determines if the inputs (excluding the textile name) must all be true or if any one of them can be true."),
     
+    #Allows user to filter images by name AND other modifiers or not
+    radioGroupButtons("and_or", "Select Modifier Operator",
+                      choices = c("AND", "OR"), 
+                      selected = "AND", 
+                      justified = TRUE),
+    
     #Allows user to select textile name to filter by
     tags$div(class = "backspace_name",
       selectInput("textile_name", "Search by textile name", 
                   choices = c("All Names", NAME_LIST), 
                   selected = "All Names")
     ), 
-    
-    #Allows user to filter images by name AND other modifiers or not
-    radioGroupButtons("and_or", "Select Modifier Operator",
-                 choices = c("AND", "OR"), 
-                 selected = "AND", 
-                 justified = TRUE),
   
     selectInput("color_choice", "Search by color(s)", 
                 choices = COLOR_LIST, 
@@ -99,25 +100,29 @@ ui <- fluidPage(
     tags$div(class = "backspace_pattern",
       #Allows user to select pattern to filter by
       selectInput("pattern_choice", "Search by pattern", 
-                  choices = c("All Patterns", PATTERN_LIST))
+                  choices = PATTERN_LIST, 
+                  multiple = TRUE)
     ),
     
     tags$div(class = "backspace_process",
       #Allows user to select process to filter by
       selectInput("process_choice", "Search by process", 
-                  choices = c("All Processes", PROCESS_LIST))
+                  choices = PROCESS_LIST, 
+                  multiple = TRUE)
     ),
     
     tags$div(class = "backspace_weave",
       #Allows user to select weave to filter by
-      selectInput("weave_choice", "Search by weave", 
-                  choices = c("All Weaves", WEAVE_LIST))
+      selectInput("weave_choice", "Search by weave structure", 
+                  choices = WEAVE_LIST, 
+                  multiple = TRUE)
     ),
     
     tags$div(class = "backspace_fiber",
       #Allows user to select fiber to filter by
       selectInput("fiber_choice", "Search by fiber", 
-                  choices = c("All Fibers", FIBER_LIST))
+                  choices = FIBER_LIST, 
+                  multiple = TRUE)
     ),
     
     #Activates comparison tool
@@ -133,6 +138,12 @@ ui <- fluidPage(
   mainPanel(
     #Creates ui shell for image gallery
     uiOutput("images"), 
+    #tags$div(id = "images"),
+    
+    #bsTooltip(id = "hover_img", title = "here is the tooltip", placement = "right"),
+    
+    #div(id = "tt_text", class = "tooltip"), 
+    #tags$div(class = "tooltip", id = "toolTipText"),
     
     #Creates buttons for users to change pages
     actionButton("prev_page", "Previous", 
@@ -163,14 +174,22 @@ server <- function(input, output, session) {
   #initialize reactive values that will be passed from observe blocks to reactive blocks
   rv <- reactiveValues(filter_colors = FALSE, 
                        filtered_color_input = list(), 
+                       filtered_data = textiles_cleaned, 
+                       filtered_pattern_input = list(), 
+                       filter_patterns = FALSE, 
+                       filtered_process_input = list(), 
+                       filter_processes = FALSE, 
+                       filter_weave_input = list(), 
+                       filter_weaves = FALSE, 
+                       filtered_fiber_input = list(), 
+                       filter_fibers = FALSE,
                        page_number = 1, 
                        page_size = PAGE_SIZE, 
                        prev_filtered_rows = nrow(textiles_cleaned), 
                        comparison_selection = NULL, 
                        zoomed_dialog_open = FALSE,
                        zoomed_comparison_open = FALSE, 
-                       image_index = 1, 
-                       filtered_data = textiles_cleaned
+                       image_index = 1
                        )
   
   #Reactive function we want to call when user selects "AND"
@@ -194,27 +213,35 @@ server <- function(input, output, session) {
     }
     
     #Filters data based on pattern
-    if (input$pattern_choice != "All Patterns") { 
-      curr_filtered <- curr_filtered %>% 
-        filter(grepl(input$pattern_choice, textile_pattern_visual))
+    if (rv$filter_patterns == TRUE) { 
+        for (pattern in rv$filtered_pattern_input) { 
+          curr_filtered <- curr_filtered %>% 
+            filter(grepl(pattern, textile_pattern_visual))
+        }
     }
     
     #Filters data based on process
-    if (input$process_choice != "All Processes") { 
-      curr_filtered <- curr_filtered %>% 
-        filter(grepl(input$process_choice, textile_process_visual))
+    if (rv$filter_processes == TRUE) { 
+      for (process in rv$filtered_process_input) {
+        curr_filtered <- curr_filtered %>% 
+          filter(grepl(process, textile_process_visual))
+      }
     }
     
     #Filters data based on weave
-    if (input$weave_choice != "All Weaves") { 
-      curr_filtered <- curr_filtered %>% 
-        filter(grepl(input$weave_choice, textile_weave_visual))
+    if (rv$filter_weaves == TRUE) { 
+      for (weave in rv$filtered_weave_input) {
+        curr_filtered <- curr_filtered %>% 
+          filter(grepl(weave, textile_weave_visual))
+      }
     }
     
     #Filters data based on fiber
-    if (input$fiber_choice != "All Fibers") { 
-      curr_filtered <- curr_filtered %>% 
-        filter(grepl(input$fiber_choice, textile_fiber_visual))
+    if (rv$filter_fibers == TRUE) { 
+      for (fiber in rv$filtered_fiber_input) {
+        curr_filtered <- curr_filtered %>% 
+          filter(grepl(fiber, textile_fiber_visual))
+      }
     }
     
     #Returns filtered data
@@ -248,39 +275,44 @@ server <- function(input, output, session) {
     }
     
     #Filter data based on name and pattern then combine with previously filtered data
-    if (input$pattern_choice != "All Patterns") { 
+    if (rv$filter_patterns == TRUE) { 
       #prev_ds <- textiles_cleaned[FALSE,]
-      prev_ds <- name_filtered %>% 
-        filter(grepl(input$pattern_choice, textile_pattern_visual)) %>% 
-          rbind(prev_ds) %>% 
-            unique()
+      for (pattern in rv$filtered_pattern_input) { 
+        prev_ds <- name_filtered %>% 
+          filter(grepl(pattern, textile_pattern_visual)) %>% 
+            rbind(prev_ds) %>% 
+              unique()
+      }
     }
     
     #Filter data based on name and process then combine with previously filtered data
-    if (input$process_choice != "All Processes") { 
-      #prev_ds <- textiles_cleaned[FALSE,]
-      prev_ds <- name_filtered %>% 
-        filter(grepl(input$process_choice, textile_process_visual)) %>% 
-          rbind(prev_ds) %>% 
-            unique()
+    if (rv$filter_processes == TRUE) { 
+      for (process in rv$filtered_process_input) { 
+        prev_ds <- name_filtered %>% 
+          filter(grepl(process, textile_process_visual)) %>% 
+            rbind(prev_ds) %>% 
+              unique()
+      }
     }
     
     #Filter data based on name and weave then combine with previously filtered data
-    if (input$weave_choice != "All Weaves") { 
-      #prev_ds <- textiles_cleaned[FALSE,]
-      prev_ds <- name_filtered %>% 
-        filter(grepl(input$weave_choice, textile_weave_visual)) %>% 
-          rbind(prev_ds) %>% 
-            unique()
+    if (rv$filter_weaves == TRUE) { 
+      for (weave in rv$filtered_weave_input) {
+        prev_ds <- name_filtered %>% 
+          filter(grepl(weave, textile_weave_visual)) %>% 
+            rbind(prev_ds) %>% 
+              unique()
+      }
     }
     
     #Filter data based on name and fiber then combine with previously filtered data
-    if (input$fiber_choice != "All Fibers") { 
-      #prev_ds <- textiles_cleaned[FALSE,]
-      prev_ds <- name_filtered %>% 
-        filter(grepl(input$fiber_choice, textile_fiber_visual)) %>% 
-          rbind(prev_ds) %>% 
-            unique()
+    if (rv$filter_fibers == TRUE) { 
+      for (fiber in rv$filtered_fiber_input) {
+        prev_ds <- name_filtered %>% 
+          filter(grepl(fiber, textile_fiber_visual)) %>% 
+            rbind(prev_ds) %>% 
+              unique()
+      }
     }
     
     #Return filtered data
@@ -304,9 +336,9 @@ server <- function(input, output, session) {
   
   #First observe determines if color filter should be added
   observe({ 
+    
     #Convert vector of color inputs to list
     rv$filtered_color_input <- as.list(input$color_choice)
-    
     #Check if there are any colors selected
     if (length(rv$filtered_color_input) == 0) { 
       rv$filter_colors = FALSE
@@ -314,11 +346,47 @@ server <- function(input, output, session) {
     else { 
       rv$filter_colors = TRUE
     }
+    
+    
+    #Repeat process for other possible inputs
+    rv$filtered_pattern_input <- as.list(input$pattern_choice)
+    if (length(rv$filtered_pattern_input) == 0) { 
+      rv$filter_patterns = FALSE
+    }
+    else { 
+      rv$filter_patterns = TRUE  
+    }
+    
+    
+    rv$filtered_process_input <- as.list(input$process_choice)
+    if (length(rv$filtered_process_input) == 0) { 
+      rv$filter_processes = FALSE
+    }
+    else { 
+      rv$filter_processes = TRUE
+    }
+    
+    
+    rv$filtered_weave_input <- as.list(input$weave_choice)
+    if (length(rv$filtered_weave_input) == 0) { 
+      rv$filter_weaves = FALSE  
+    }
+    else { 
+      rv$filter_weaves = TRUE  
+    }
+    
+    
+    rv$filtered_fiber_input <- as.list(input$fiber_choice)
+    if (length(rv$filtered_fiber_input) == 0) { 
+      rv$filter_fibers = FALSE  
+    }
+    else { 
+      rv$filter_fibers = TRUE  
+    }
   })
   
   #Second observe sets the page number back to 1 if image gallery has changed
   observe ({ 
-    #print(input$textile_name)
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
       rv$filtered_data <- filtered_and()
@@ -415,42 +483,99 @@ server <- function(input, output, session) {
     updateSelectInput(session, "textile_name", choices = c("All Names", NAME_LIST), selected = "All Names")  
   })
   
-  observeEvent (input$pattern_backspace, { 
-    updateSelectInput(session, "pattern_choice", choices = c("All Patterns", PATTERN_LIST), selected = "All Patterns")  
+  # observeEvent (input$pattern_backspace, { 
+  #   updateSelectInput(session, "pattern_choice", choices = c("All Patterns", PATTERN_LIST), selected = "All Patterns")  
+  # })
+  
+  # observeEvent (input$process_backspace, { 
+  #   updateSelectInput(session, "process_choice", choices = c("All Processes", PROCESS_LIST), selected = "All Processes")  
+  # })
+  # 
+  # observeEvent (input$weave_backspace, { 
+  #   updateSelectInput(session, "weave_choice", choices = c("All Weaves", WEAVE_LIST), selected = "All Weaves")  
+  # })
+  
+  # observeEvent (input$fiber_backspace, { 
+  #   updateSelectInput(session, "fiber_choice", choices = c("All Fibers", FIBER_LIST), selected = "All Fibers")  
+  # })
+  
+  
+  observeEvent(input$textile_name, { 
+    
+    
+    curr_data <- textiles_cleaned %>% 
+      filter(textile_name == input$textile_name)
+    
+    if (input$textile_name == "All Names") { 
+      #Set all select inputs to regular options
+      updateSelectInput(session, "color_choice", choices = COLOR_LIST, selected = "")
+    }
+    else { 
+      print(nrow(curr_data))
+      color_lst <- list()
+      for (color in COLOR_LIST) {
+        #print(grepl(color, curr_data$textile_color_visual))
+        if(length(grep(color, curr_data$textile_color_visual)) > 0) { 
+          print(color)
+          color_lst <- c(color_lst, list(color))
+        }
+      }
+      updateSelectInput(session, "color_choice", choices = color_lst, selected = "")
+
+      # pattern_lst <- list()
+      # for (pattern in PATTERN_LIST) {
+      #   if(length(grep(pattern, curr_data$textile_pattern_visual)) > 0) {
+      #     pattern_lst <- c(pattern_lst, list(pattern))
+      #   }
+      # }
+      # print(pattern_lst)
+      # if (length(pattern_lst > 0)) {
+      #   updateSelectInput(session, "pattern_choice", choices = c("All Patterns", pattern_lst), selected = "All Patterns")
+      # }
+      # else {
+      #   updateSelectInput(session, "pattern_choice", choices = c("All Patterns", PATTERN_LIST), selected = "All Patterns")
+      # }
+       
+    }
+    
   })
-  
-  observeEvent (input$process_backspace, { 
-    updateSelectInput(session, "process_choice", choices = c("All Processes", PROCESS_LIST), selected = "All Processes")  
-  })
-  
-  observeEvent (input$weave_backspace, { 
-    updateSelectInput(session, "weave_choice", choices = c("All Weaves", WEAVE_LIST), selected = "All Weaves")  
-  })
-  
-  observeEvent (input$fiber_backspace, { 
-    updateSelectInput(session, "fiber_choice", choices = c("All Fibers", FIBER_LIST), selected = "All Fibers")  
-  })
-  
-  
   
   
   #Check for reset button click - reset all inputs if so
   observeEvent (input$reset_button, { 
-    updateSelectInput(session, "textile_name", selected = "All Names")
+    updateSelectInput(session, "textile_name", choices = c("All Names", NAME_LIST), selected = "All Names")
     updateRadioGroupButtons(session, "and_or", selected = "AND")
-    updateSelectInput(session, "color_choice", selected = "")
-    updateSelectInput(session, "pattern_choice", selected = "All Patterns")
-    updateSelectInput(session, "process_choice", selected = "All Processes")
-    updateSelectInput(session, "weave_choice", selected = "All Weaves")
-    updateSelectInput(session, "fiber_choice", selected = "All Fibers")
+    updateSelectInput(session, "color_choice", choices = COLOR_LIST, selected = "")
+    updateSelectInput(session, "pattern_choice", choices = PATTERN_LIST, selected = "")
+    updateSelectInput(session, "process_choice", choices = PROCESS_LIST, selected = "")
+    updateSelectInput(session, "weave_choice", choices = WEAVE_LIST, selected = "")
+    updateSelectInput(session, "fiber_choice", choices = FIBER_LIST, selected = "")
     rv$page_number <- 1
   })
   
   
   #Pass output to UI for displaying
   output$images <- renderUI({ 
-    tags$div(id = "image_gallery", class = "image-gallery")
+    tags$div(id = "image_gallery", class = "image-gallery") 
+    #tags$div(class = "tooltip", id = "hover_img", input$hover_img)
   })
+  
+  # output$toolTipText <- renderUI({ 
+  #   print("here")
+  #   tags$div(id = "tt_text", class = "tooltip")  
+  # })
+  
+  
+  
+  #Checks for user hovering over image message from js
+  # observeEvent (input$hover_img, { 
+  #     # renderUI <- ({ 
+  #     #   tags$div(id = "toolTipText", class = "tooltip")
+  #     # })
+  #     selection <- textiles_cleaned %>% 
+  #       filter(image_filename_app == input$hover_img)
+  #     addPopover(session, id = "gallery-image", title = selection$textile_name)
+  # })
   
   
   #Check if user has clicked on an image
