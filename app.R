@@ -511,31 +511,47 @@ server <- function(input, output, session) {
       updateSelectInput(session, "color_choice", choices = COLOR_LIST, selected = "")
     }
     else { 
-      print(nrow(curr_data))
       color_lst <- list()
       for (color in COLOR_LIST) {
         #print(grepl(color, curr_data$textile_color_visual))
         if(length(grep(color, curr_data$textile_color_visual)) > 0) { 
-          print(color)
+          #print(color)
           color_lst <- c(color_lst, list(color))
         }
       }
       updateSelectInput(session, "color_choice", choices = color_lst, selected = "")
 
-      # pattern_lst <- list()
-      # for (pattern in PATTERN_LIST) {
-      #   if(length(grep(pattern, curr_data$textile_pattern_visual)) > 0) {
-      #     pattern_lst <- c(pattern_lst, list(pattern))
-      #   }
-      # }
-      # print(pattern_lst)
-      # if (length(pattern_lst > 0)) {
-      #   updateSelectInput(session, "pattern_choice", choices = c("All Patterns", pattern_lst), selected = "All Patterns")
-      # }
-      # else {
-      #   updateSelectInput(session, "pattern_choice", choices = c("All Patterns", PATTERN_LIST), selected = "All Patterns")
-      # }
-       
+      pattern_lst <- list()
+      for (pattern in PATTERN_LIST) {
+        if(length(grep(pattern, curr_data$textile_pattern_visual)) > 0) {
+          pattern_lst <- c(pattern_lst, list(pattern))
+        }
+      }
+      updateSelectInput(session, "pattern_choice", choices = pattern_lst, selected = "")
+      
+      process_lst <- list()
+      for (process in PROCESS_LIST) { 
+        if (length(grep(process, curr_data$textile_process_visual)) > 0) { 
+          process_lst <- c(process_lst, list(process))  
+        }  
+      }
+      updateSelectInput(session, "process_choice", choices = process_lst, selected = "")
+      
+      weave_lst <- list()
+      for (weave in WEAVE_LIST) { 
+        if (length(grep(weave, curr_data$textile_weave_visual)) > 0) { 
+          weave_lst <- c(weave_lst, list(weave))  
+        }  
+      }
+      updateSelectInput(session, "weave_choice", choices = weave_lst, selected = "")
+      
+      fiber_lst <- list()
+      for (fiber in FIBER_LIST) { 
+        if (length(grep(fiber, curr_data$textile_fiber_visual)) > 0) { 
+          fiber_lst <- c(fiber_lst, list(fiber))  
+        }  
+      }
+      updateSelectInput(session, "fiber_choice", choices = fiber_lst, selected = "")
     }
     
   })
