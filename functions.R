@@ -3,12 +3,13 @@
 
 
 #Function that sends message to js to update images
-display_images <- function(session, url_list) { 
+display_images <- function(session, url_list, name_list) { 
   image_urls <- as.list(url_list)
+  textile_names <- as.list(name_list)
   
   #Sends message to js to call update_images function
   session$sendCustomMessage(type = "update_images", 
-                            message = list(image_urls = image_urls))
+                            message = list(image_urls = image_urls, textile_names = textile_names))
 }
 
 

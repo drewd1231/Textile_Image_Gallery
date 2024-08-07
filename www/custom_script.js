@@ -1,15 +1,20 @@
 //Checks for shiny code looking to update image gallery
 Shiny.addCustomMessageHandler("update_images", function(message) { 
-  update_images(message.image_urls);  
+  update_images(message.image_urls, message.textile_names);  
 });
 
 
 //Function that updates image gallery
-function update_images(image_urls) { 
+function update_images(image_urls, textile_names) { 
 
   //Error Checks that image paths passed are in an array
   if (!Array.isArray(image_urls)) { 
     console.error("image_urls is not an array");
+    return;
+  }
+  
+  if (!Array.isArray(textile_names)) { 
+    console.error("textile_names is not an array");
     return;
   }
   
@@ -25,20 +30,36 @@ function update_images(image_urls) {
     return;
   }
 
-
+  var count = 0;
+  
   //Loops through all urls passed by reactive R input
   image_urls.forEach(function(url) { 
   
     //Creates image object for each url and checks for click event
-    var img = $("<img>").attr("src", url).attr("title", url).addClass("gallery-image").click(function() { 
+    var img = $("<img>").attr("src", url).addClass("gallery-image").click(function() { 
       Shiny.setInputValue("selected_image", url, {priority: "event"});
     });
     
     //Changes users cursor when hovering above an image
     img.css("cursor", "pointer");
     
-    //Appends each image object to the "image_gallery"
-    $("#image_gallery").append(img);
+    
+    var tt_container = $("<div>").addClass("tooltip-container");
+    
+    if (textile_names[count] === null) { 
+      var tt_text = $("<span>").addClass("tooltip-text").text("No Name");
+    }
+    else { 
+      var tt_text = $("<span>").addClass("tooltip-text").text(textile_names[count]);
+    }
+    
+    
+    
+    tt_container.append(img).append(tt_text);
+    //Appends each image object in tooltip container to the "image_gallery"
+    $("#image_gallery").append(tt_container);
+    
+    count = count+1;
   });
 }
 

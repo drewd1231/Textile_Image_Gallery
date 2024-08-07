@@ -321,7 +321,8 @@ server <- function(input, output, session) {
   #Display images initially before any inputs are selected
   session$onFlushed(function() {
     image_urls <- textiles_cleaned$image_filename_app
-    display_images(session, image_urls[1:PAGE_SIZE])
+    textile_names <- textiles_cleaned$textile_name
+    display_images(session, image_urls[1:PAGE_SIZE], textile_names[1:PAGE_SIZE])
   })
 
   
@@ -407,7 +408,7 @@ server <- function(input, output, session) {
     #up the page or the last photo of the gallery
     end <- min(rv$page_number * rv$page_size, nrow(rv$filtered_data))
     
-    display_images(session, rv$filtered_data$image_filename_app[start:end])
+    display_images(session, rv$filtered_data$image_filename_app[start:end], rv$filtered_data$textile_name[start:end])
   })
   
   
