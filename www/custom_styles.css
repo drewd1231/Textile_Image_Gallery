@@ -2,12 +2,15 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 10px;
+    overflow: visible;
 }
   
 .gallery-image { 
   width: 100%;
   height: 250px;
   object-fit: cover; 
+  position: relative;
+  pointer-events: auto
   //transition: transform 0.2sec;
 }
 
@@ -145,15 +148,15 @@ font-size: 15px;
 
 .btn-group .btn {
   color: #fff;
-  background-color: #818ca6;
+  background-color:#403c3c;
   border-color: #818ca6;
 }
 .btn-group .btn:hover {
-  background-color: #021a54;
-  border-color: #021a54;
+  background-color: #818ca6;
+  border-color: #818ca6;
 }
 
 .btn-group .btn:focus, .btn-group .btn:active {
-  background-color: #021a54;
-  border-color: #021a54;
+  background-color: #818ca6;
+  border-color: #818ca6;
 }

@@ -13,11 +13,8 @@ function update_images(image_urls) {
     return;
   }
   
-  //var container = document.getElementById(gallery_id);
-  
   //Clears the gallery before we look for images we want
   $("#image_gallery").empty();
-  //container.innerHTML = '';
   
   //Check if there are no images matching input
   if (image_urls[0] === null) {
@@ -32,51 +29,17 @@ function update_images(image_urls) {
   //Loops through all urls passed by reactive R input
   image_urls.forEach(function(url) { 
   
-  /*var temp_image = new Image();
-  temp_image.src = url;*/
-  
-  //Creates image object for each url and checks for click event
-  var img = $("<img>").attr("src", url).attr("textile-name", url).addClass("gallery-image").click(function() { 
-    Shiny.setInputValue("selected_image", url, {priority: "event"});
-  });
-  
-  //Changes users cursor when hovering above an image
-  img.css("cursor", "pointer");
-  //img.title = url;
-  //img.css("tooltip", display = "block");
-  
-  /*$('.gallery-image').mouseover(function() {
-    var imageTitle = $(this).attr('textile-name');
-    console.log(`url : ${imageTitle}`);
-    $('#toolTipText').text(imageTitle);
-    $('#toolTipText').css({
-      'display': 'block',
-      'top': $(this).offset().top - $('#toolTipText').outerHeight() - 10,
-      'left': $(this).offset().left + ($(this).outerWidth() / 2) - ($('#toolTipText').outerWidth() / 2)
+    //Creates image object for each url and checks for click event
+    var img = $("<img>").attr("src", url).attr("title", url).addClass("gallery-image").click(function() { 
+      Shiny.setInputValue("selected_image", url, {priority: "event"});
     });
-  });*/
-  
-  /*$('.gallery-image').mouseout(function() {
-    $('#toolTipText').css('display', 'none');
-  });*/
-  
-  //Appends each image object to the "image_gallery"
-  $("#image_gallery").append(img);
-  //container.appendChild(img);
+    
+    //Changes users cursor when hovering above an image
+    img.css("cursor", "pointer");
+    
+    //Appends each image object to the "image_gallery"
+    $("#image_gallery").append(img);
   });
-  
-  /*$('.gallery-image').mouseenter(function() {
-    var imageTitle = $(this).attr('textile-name');
-    console.log(`url : ${imageTitle}`);
-    $('#tt_text').text(imageTitle);
-    $('#tt_text').css({
-      'display': 'block',
-      'top': $(this).offset().top - $('#tt_text').outerHeight() - 10,
-      'left': $(this).offset().left + ($(this).outerWidth() / 2) - ($('#tt_text').outerWidth() / 2)
-    });
-  });*/
-  
-  
 }
 
 
@@ -92,55 +55,8 @@ $(document).on("keydown", ".backspace_name", function(e) {
   }
 })
 
-$(document).on("keydown", ".backspace_pattern", function(e) { 
-  if (e.key === "Backspace") { 
-    var select_input = $(this);
-    
-    if (select_input.val() === "") { 
-      var rand_int = Math.random();
-      Shiny.setInputValue("pattern_backspace", rand_int);
-    }
-  }
-})
-
-$(document).on("keydown", ".backspace_process", function(e) { 
-  if (e.key === "Backspace") { 
-    var select_input = $(this);
-    
-    if (select_input.val() === "") { 
-      var rand_int = Math.random();
-      Shiny.setInputValue("process_backspace", rand_int);
-    }
-  }
-})
-
-$(document).on("keydown", ".backspace_weave", function(e) { 
-  if (e.key === "Backspace") { 
-    var select_input = $(this);
-    
-    if (select_input.val() === "") { 
-      var rand_int = Math.random();
-      Shiny.setInputValue("weave_backspace", rand_int);
-    }
-  }
-})
-
-$(document).on("keydown", ".backspace_fiber", function(e) { 
-  if (e.key === "Backspace") { 
-    var select_input = $(this);
-    
-    if (select_input.val() === "") { 
-      var rand_int = Math.random();
-      Shiny.setInputValue("fiber_backspace", rand_int);
-    }
-  }
-})
-
-
-
 //Check for clicks on image when first modal dialog pop-up
 $(document).on("click", ".zoomed_image", function() { 
-  //console.log("here");
   var path_name = $(this).data("path");
   //Tell shiny that image has been clicked on and we should now zoom in
   Shiny.setInputValue("zoomed_image", path_name)
@@ -163,30 +79,6 @@ $(document).on("click", ".zoomed_comparison", function() {
   Shiny.setInputValue("zoomed_comparison", path_name)
 })
 
-
-/*$(document).on("mouseover", ".gallery-image", function() {
-  var imageTitle = $(this).attr('textile-name');
-    console.log(`url : ${imageTitle}`);
-    $('#tt_Text').text(imageTitle);
-    $('#tt_text').css({
-      'display': 'block',
-      'top': $(this).offset().top - $('#tt_Text').outerHeight() - 10,
-      'left': $(this).offset().left + ($(this).outerWidth() / 2) - ($('#tt_Text').outerWidth() / 2)
-    });
-});
-*/
-/*$(document).on("mouseout", ".gallery-image",function() {
-  console.log("left");
-  $('#toolTipText').css('display', 'none');
-});*/
-
-
-/*
-$(document).on("mouseover", ".gallery-image", function() { 
-  var textile_url = $(this).attr("src");
-  //console.log(`print name: ${textile_name}`);
-  Shiny.setInputValue("hover_img", textile_url);
-})*/
 
 //Sets shiny value to null when zoomed dialog is closed
 Shiny.addCustomMessageHandler("update_zoomed_input", function(message) { 

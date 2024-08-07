@@ -67,14 +67,15 @@ get_image_details <- function(image_selection, GLOSSARY_TEXTILES_LIST, rv) {
     tags$p(strong("Date: "), image_selection$orig_date), 
     tags$p(strong("Additional Info: "), image_selection$addtl_info), 
     tags$p(strong("Collection/image file: "), collection_image_info), 
-    tags$p(strong("Collection/image URL: "), catalogue_image_url),
+    tags$p(strong("Collection/image URL: "), 
+           tags$a(href = catalogue_image_url, catalogue_image_url)),
     tags$p(strong("Search for "), strong(image_selection$textile_name), strong("in: ")),
     tags$p(actionLink("comparison_tool", strong("Comparison Tool"))),
     tags$a(href = "https://dutchtextiletrade.org/projects/textile-geographies/", strong("Map App")), #, target = "_blank"),
     tags$p(),
     tags$a(href = values_link, strong("Values App")), # target = "_blank"),
     tags$p(),
-    tags$a(href = glossary_url, strong("Glossary")) #, target = "_blank")
+    tags$a(href = glossary_url, strong("Visual Textile Glossary")) #, target = "_blank")
   )  
 }
 
@@ -93,7 +94,7 @@ showImageDescription <- function(selected_image, textiles_cleaned, GLOSSARY_TEXT
   })
   
   showModal(modalDialog( 
-    title = "Image Information",
+    title = "Sample Information",
     div(
       class = "modal-body", 
       div(

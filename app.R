@@ -21,11 +21,12 @@ PAGE_SIZE = 9
 
 #Read in data
 #textiles_data <- read_excel("MaterialDataset01302024.xlsx")
-textiles_data <- read_excel("MaterialDataset_07-19-24.xlsx")
+textiles_data <- read_excel("MaterialDataset_08-01-24.xlsx")
 
 #Filter out any textiles without images
 textiles_cleaned <- textiles_data %>% 
   filter(image_filename_app != "NA")
+textiles_cleaned <- textiles_cleaned[order(textiles_cleaned$mat_no),]
 
 #Make list for users searching by textile name
 names_cleaned <- textiles_cleaned %>% 
@@ -71,14 +72,11 @@ ui <- fluidPage(
   
   theme = shinytheme("sandstone"),
   
-  titlePanel(title = "Materials Sample Search"), 
+  titlePanel(title = ""), 
   
   
   #Create each input possibility
   sidebarPanel(
-    h3("The Material Record"), 
-    h5("Search the gallery of textiles using any number of inputs found below. 
-       The modifier operator determines if the inputs (excluding the textile name) must all be true or if any one of them can be true."),
     
     #Allows user to filter images by name AND other modifiers or not
     radioGroupButtons("and_or", "Select Modifier Operator",
@@ -99,28 +97,28 @@ ui <- fluidPage(
     
     tags$div(class = "backspace_pattern",
       #Allows user to select pattern to filter by
-      selectInput("pattern_choice", "Search by pattern", 
+      selectInput("pattern_choice", "Search by pattern(s)", 
                   choices = PATTERN_LIST, 
                   multiple = TRUE)
     ),
     
     tags$div(class = "backspace_process",
       #Allows user to select process to filter by
-      selectInput("process_choice", "Search by process", 
+      selectInput("process_choice", "Search by process(s)", 
                   choices = PROCESS_LIST, 
                   multiple = TRUE)
     ),
     
     tags$div(class = "backspace_weave",
       #Allows user to select weave to filter by
-      selectInput("weave_choice", "Search by weave structure", 
+      selectInput("weave_choice", "Search by weave structure(s)", 
                   choices = WEAVE_LIST, 
                   multiple = TRUE)
     ),
     
     tags$div(class = "backspace_fiber",
       #Allows user to select fiber to filter by
-      selectInput("fiber_choice", "Search by fiber", 
+      selectInput("fiber_choice", "Search by fiber(s)", 
                   choices = FIBER_LIST, 
                   multiple = TRUE)
     ),
@@ -139,11 +137,6 @@ ui <- fluidPage(
     #Creates ui shell for image gallery
     uiOutput("images"), 
     #tags$div(id = "images"),
-    
-    #bsTooltip(id = "hover_img", title = "here is the tooltip", placement = "right"),
-    
-    #div(id = "tt_text", class = "tooltip"), 
-    #tags$div(class = "tooltip", id = "toolTipText"),
     
     #Creates buttons for users to change pages
     actionButton("prev_page", "Previous", 
@@ -171,7 +164,7 @@ server <- function(input, output, session) {
     stop(err)
   })
   
-  #initialize reactive values that will be passed from observe blocks to reactive blocks
+  #initialize reactive values that will be passed between observe/reactive blocks
   rv <- reactiveValues(filter_colors = FALSE, 
                        filtered_color_input = list(), 
                        filtered_data = textiles_cleaned, 
@@ -334,7 +327,7 @@ server <- function(input, output, session) {
   
   #Observe blocks split up to minimize redundant calling of reactive values
   
-  #First observe determines if color filter should be added
+  #First observe determines if filters should be added for each modifier (if there are inputs)
   observe({ 
     
     #Convert vector of color inputs to list
@@ -386,6 +379,7 @@ server <- function(input, output, session) {
   })
   
   #Second observe sets the page number back to 1 if image gallery has changed
+  #Also updates filtered_data reactive value if any changes are made to inputs
   observe ({ 
     #If user wants modifiers to be "And-ed" together, call respective reactive function
     if (input$and_or == "AND") { 
@@ -483,44 +477,36 @@ server <- function(input, output, session) {
     updateSelectInput(session, "textile_name", choices = c("All Names", NAME_LIST), selected = "All Names")  
   })
   
-  # observeEvent (input$pattern_backspace, { 
-  #   updateSelectInput(session, "pattern_choice", choices = c("All Patterns", PATTERN_LIST), selected = "All Patterns")  
-  # })
   
-  # observeEvent (input$process_backspace, { 
-  #   updateSelectInput(session, "process_choice", choices = c("All Processes", PROCESS_LIST), selected = "All Processes")  
-  # })
-  # 
-  # observeEvent (input$weave_backspace, { 
-  #   updateSelectInput(session, "weave_choice", choices = c("All Weaves", WEAVE_LIST), selected = "All Weaves")  
-  # })
-  
-  # observeEvent (input$fiber_backspace, { 
-  #   updateSelectInput(session, "fiber_choice", choices = c("All Fibers", FIBER_LIST), selected = "All Fibers")  
-  # })
-  
-  
+  #Observe block to change possible user selections when textile name is chosen
   observeEvent(input$textile_name, { 
     
-    
+    #Get all rows of data with matching textile name
     curr_data <- textiles_cleaned %>% 
       filter(textile_name == input$textile_name)
     
     if (input$textile_name == "All Names") { 
       #Set all select inputs to regular options
       updateSelectInput(session, "color_choice", choices = COLOR_LIST, selected = "")
+      updateSelectInput(session, "pattern_choice", choices = PATTERN_LIST, selected = "")
+      updateSelectInput(session, "process_choice", choices = PROCESS_LIST, selected = "")
+      updateSelectInput(session, "weave_choice", choices = WEAVE_LIST, selected = "")
+      updateSelectInput(session, "fiber_choice", choices = FIBER_LIST, selected = "")
     }
     else { 
+      #User has selected specific textile
       color_lst <- list()
+      #Loop through color list and check if each is present in current set of data
       for (color in COLOR_LIST) {
-        #print(grepl(color, curr_data$textile_color_visual))
         if(length(grep(color, curr_data$textile_color_visual)) > 0) { 
-          #print(color)
+          #If color is present, append to color list
           color_lst <- c(color_lst, list(color))
         }
       }
+      #Update select input box options with colors seen in this data set
       updateSelectInput(session, "color_choice", choices = color_lst, selected = "")
 
+      #Repeat process for patterns
       pattern_lst <- list()
       for (pattern in PATTERN_LIST) {
         if(length(grep(pattern, curr_data$textile_pattern_visual)) > 0) {
@@ -529,6 +515,7 @@ server <- function(input, output, session) {
       }
       updateSelectInput(session, "pattern_choice", choices = pattern_lst, selected = "")
       
+      #Repeat process for processes
       process_lst <- list()
       for (process in PROCESS_LIST) { 
         if (length(grep(process, curr_data$textile_process_visual)) > 0) { 
@@ -537,6 +524,7 @@ server <- function(input, output, session) {
       }
       updateSelectInput(session, "process_choice", choices = process_lst, selected = "")
       
+      #Repeat process for weaves
       weave_lst <- list()
       for (weave in WEAVE_LIST) { 
         if (length(grep(weave, curr_data$textile_weave_visual)) > 0) { 
@@ -545,6 +533,7 @@ server <- function(input, output, session) {
       }
       updateSelectInput(session, "weave_choice", choices = weave_lst, selected = "")
       
+      #Repeat process for fibers
       fiber_lst <- list()
       for (fiber in FIBER_LIST) { 
         if (length(grep(fiber, curr_data$textile_fiber_visual)) > 0) { 
@@ -573,26 +562,7 @@ server <- function(input, output, session) {
   #Pass output to UI for displaying
   output$images <- renderUI({ 
     tags$div(id = "image_gallery", class = "image-gallery") 
-    #tags$div(class = "tooltip", id = "hover_img", input$hover_img)
   })
-  
-  # output$toolTipText <- renderUI({ 
-  #   print("here")
-  #   tags$div(id = "tt_text", class = "tooltip")  
-  # })
-  
-  
-  
-  #Checks for user hovering over image message from js
-  # observeEvent (input$hover_img, { 
-  #     # renderUI <- ({ 
-  #     #   tags$div(id = "toolTipText", class = "tooltip")
-  #     # })
-  #     selection <- textiles_cleaned %>% 
-  #       filter(image_filename_app == input$hover_img)
-  #     addPopover(session, id = "gallery-image", title = selection$textile_name)
-  # })
-  
   
   #Check if user has clicked on an image
   observeEvent(input$selected_image, { 
@@ -699,7 +669,6 @@ server <- function(input, output, session) {
         class = "zoomed-description",
         tags$img(
           src = selected_url
-          #style = "min-height: 400px; width: auto; max-width: 100%; max-height: 800px; margin: auto;", 
         ),
         size = "l", 
         footer = modalButton("Close")
@@ -719,6 +688,7 @@ server <- function(input, output, session) {
       image_1 <- images[1]
       image_2 <- images[2]
       
+      #Call zoomed comparison function with retrieved images
       showZoomedComparison(image_1, image_2, rv)
     }
   })
