@@ -46,6 +46,7 @@ function update_images(image_urls, textile_names) {
     
     var tt_container = $("<div>").addClass("tooltip-container");
     
+    //Set pop-up text box to name of textile
     if (textile_names[count] === null) { 
       var tt_text = $("<span>").addClass("tooltip-text").text("No Name");
     }
@@ -110,5 +111,3 @@ Shiny.addCustomMessageHandler("update_zoomed_input", function(message) {
 Shiny.addCustomMessageHandler("update_comparison_input", function(message) { 
   Shiny.setInputValue("zoomed_comparison", null);
 });
-
-

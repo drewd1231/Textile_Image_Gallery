@@ -33,37 +33,79 @@ names_cleaned <- textiles_cleaned %>%
   filter(textile_name != "NA")
 names_cleaned <- names_cleaned[order(names_cleaned$textile_name),]
 
-# patterns_cleaned <- textiles_cleaned %>% 
-#   filter()
 
-#Code to get list of all colors used
-# textile_color <- textiles_data$textile_color_visual %>% 
-#   strsplit(", ") %>% 
-#    unlist() %>% 
-#     unique()
-
+#List of name options
 NAME_LIST <- names_cleaned$textile_name
 
-#Hardcoded list of color options
-COLOR_LIST <- c("blue", "white", "red", "black", "gold", "natural", "yellow", "green", "purple", "orange", "brown", "pink", "grey") %>% 
+
+#Code to get list of all colors used
+t_color <- textiles_cleaned$textile_color_visual %>%
+  strsplit(", ") %>%
+  unlist() %>%
+  unique()
+
+#Get rid of extra descriptors in parentheses
+t_color <- gsub("\\s*\\([^\\)]+\\)", "", t_color)
+t_color <- t_color[t_color != "multiple"]
+t_color %>% 
+  unique()
+
+#List of color options
+COLOR_LIST <- t_color %>% 
   sort()
 
-#Hardcoded list of pattern options
-PATTERN_LIST <- c("floral", "geometric", "checkered", "striped", "plain", "figural", "none", "dots", "stars", "foliage") %>% 
+
+#Retrieve list of pattern options from data
+t_pattern <- textiles_cleaned$textile_pattern_visual %>%
+  strsplit(", ") %>%
+    unlist() %>%
+      unique() 
+t_pattern <- t_pattern[!is.na(t_pattern)]
+
+#List of pattern options
+PATTERN_LIST <- t_pattern %>% 
   sort()
 
-#Hardcoded list of process options
-PROCESS_LIST <- c("painted", "block printed", "resist-dyed", "piece-dyed", "loom-patterned", "printed", "felted", "embroidered", "ikat", "dyed", "damask") %>% 
+
+#Retrieve list of process options from data
+t_process <- textiles_cleaned$textile_process_visual %>%
+  strsplit(", ") %>%
+    unlist() %>%
+      unique()
+t_process <- t_process[!is.na(t_process)]
+
+#List of process options
+PROCESS_LIST <- c(t_process, "dyed") %>% 
   sort()
 
-#Hardcoded list of weave options
-WEAVE_LIST <- c("satin", "plainweave", "twill", "damask", "velvet", "complex weave", "plainweave with doubled threads", "plainweave, supplemental weft") %>% 
+
+#Retrieve list of weave options from data
+t_weave <- textiles_cleaned$textile_weave_visual %>%
+  strsplit(", ") %>%
+    unlist() %>%
+      unique()
+t_weave <- t_weave[!is.na(t_weave)]
+t_weave <- t_weave[t_weave != "twill?"]
+  
+#List of weave options
+WEAVE_LIST <- t_weave %>% 
   sort()
 
-#Hardcoded list of fiber options
-FIBER_LIST <- c("silk", "cotton", "wool", "linen") %>% 
+
+#Retrieve list of fiber options from data
+t_fiber <- textiles_cleaned$textile_fiber_visual %>%
+  strsplit(", ") %>%
+    unlist() %>%
+      unique()
+t_fiber <- t_fiber[!is.na(t_fiber)]
+
+#List of fiber options
+# FIBER_LIST <- c("silk", "cotton", "wool", "linen") %>% 
+#   sort()
+FIBER_LIST <- t_fiber %>% 
   sort()
 
+#List of textiles currently in visual 
 GLOSSARY_TEXTILES_LIST <- c("chintz-kalamkari", "dongris", "gingham", "guinea cloth", "muslin", "nickanees", "perpetuanen", "platillas", "sail cloth", "slaaplakens")
 
 #Define UI
@@ -80,10 +122,12 @@ ui <- fluidPage(
     
     #Allows user to filter images by name AND other modifiers or not
     radioGroupButtons("and_or", "Select Modifier Operator",
-                      choices = c("AND", "OR"), 
-                      selected = "AND", 
-                      justified = TRUE),
-    
+                      choices = c("AND", "OR"),
+                      selected = "AND",
+                      justified = TRUE,
+                      status = "default", 
+                      checkIcon = list(yes = icon("check"))),
+
     #Allows user to select textile name to filter by
     tags$div(class = "backspace_name",
       selectInput("textile_name", "Search by textile name", 
@@ -136,7 +180,6 @@ ui <- fluidPage(
   mainPanel(
     #Creates ui shell for image gallery
     uiOutput("images"), 
-    #tags$div(id = "images"),
     
     #Creates buttons for users to change pages
     actionButton("prev_page", "Previous", 
@@ -478,6 +521,9 @@ server <- function(input, output, session) {
     updateSelectInput(session, "textile_name", choices = c("All Names", NAME_LIST), selected = "All Names")  
   })
   
+  observeEvent(input$and_or, {
+    session$sendCustomMessage("set_radio_buttons", message = list(selection = input$and_or));
+  })
   
   #Observe block to change possible user selections when textile name is chosen
   observeEvent(input$textile_name, { 

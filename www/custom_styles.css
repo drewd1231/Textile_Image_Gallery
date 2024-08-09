@@ -130,21 +130,6 @@ font-size: 15px;
   height: 80%;
 }
 
-.btn-group .btn {
-  color: #fff;
-  background-color:#403c3c;
-  border-color: #818ca6;
-}
-.btn-group .btn:hover {
-  background-color: #818ca6;
-  border-color: #818ca6;
-}
-
-.btn-group .btn:focus, .btn-group .btn:active {
-  background-color: #818ca6;
-  border-color: #818ca6;
-}
-
 
 /* Container for tooltip */
 .tooltip-container {
